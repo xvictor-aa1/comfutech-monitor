@@ -1,0 +1,499 @@
+{% extends "base.html" %}
+{% block title %}Dashboard - Comfutech Monitor{% endblock %}
+
+{% block content %}
+
+<!-- ============================================================ -->
+<!-- HEADER                                                       -->
+<!-- ============================================================ -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="mb-1"><i class="bi bi-speedometer2"></i> Dashboard</h2>
+        <p class="text-muted mb-0 small">
+            Vista general del estado de la red · Actualizado:
+            <span id="last-update">—</span>
+        </p>
+    </div>
+    <div class="btn-group">
+        <a href="{% url 'monitoreo:monitor_status' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-cpu"></i> Monitor
+        </a>
+        <a href="{{ grafana_url }}" target="_blank" class="btn btn-outline-primary">
+            <i class="bi bi-graph-up"></i> Grafana
+        </a>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- STATS                                                        -->
+<!-- ============================================================ -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <a href="{% url 'inventario:device_list' %}" class="text-decoration-none">
+            <div class="card card-metric">
+                <div class="card-body d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="metric-value text-primary">{{ total_devices }}</div>
+                        <div class="metric-label">Equipos activos</div>
+                    </div>
+                    <i class="bi bi-hdd-network metric-icon text-primary"></i>
+                </div>
+            </div>
+        </a>
+    </div>
+    <div class="col-md-3">
+        <a href="{% url 'inventario:device_list' %}?role=core" class="text-decoration-none">
+            <div class="card card-metric">
+                <div class="card-body d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="metric-value text-info">{{ core_devices }}</div>
+                        <div class="metric-label">Core / Distribución</div>
+                    </div>
+                    <i class="bi bi-diagram-3 metric-icon text-info"></i>
+                </div>
+            </div>
+        </a>
+    </div>
+    <div class="col-md-3">
+        <a href="{% url 'inventario:device_list' %}" class="text-decoration-none">
+            <div class="card card-metric">
+                <div class="card-body d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="metric-value text-success">
+                            {{ monitored_interfaces }}<small class="text-muted">/{{ total_interfaces }}</small>
+                        </div>
+                        <div class="metric-label">Interfaces monitoreadas</div>
+                    </div>
+                    <i class="bi bi-ethernet metric-icon text-success"></i>
+                </div>
+            </div>
+        </a>
+    </div>
+    <div class="col-md-3">
+        <a href="{% url 'alertas:alert_list' %}" class="text-decoration-none">
+            <div class="card card-metric">
+                <div class="card-body d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="metric-value {% if critical_count > 0 %}text-danger{% else %}text-warning{% endif %}">
+                            {{ active_alerts_count }}
+                        </div>
+                        <div class="metric-label">
+                            Alertas activas
+                            {% if critical_count > 0 %}
+                                <span class="badge bg-danger ms-1">{{ critical_count }} críticas</span>
+                            {% endif %}
+                        </div>
+                        <small class="text-muted">{{ alerts_24h }} en 24h</small>
+                    </div>
+                    <i class="bi bi-bell metric-icon {% if critical_count > 0 %}text-danger{% else %}text-warning{% endif %}"></i>
+                </div>
+            </div>
+        </a>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- LAYOUT: EQUIPOS + ALERTAS                                    -->
+<!-- ============================================================ -->
+<div class="row g-4">
+
+    <!-- ======================================================== -->
+    <!-- EQUIPOS MONITOREADOS                                     -->
+    <!-- ======================================================== -->
+    <div class="col-lg-8">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="mb-0">
+                <i class="bi bi-hdd-network"></i> Equipos monitoreados
+            </h5>
+            <div class="d-flex align-items-center gap-2">
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="auto-refresh" checked>
+                    <label class="form-check-label" for="auto-refresh">
+                        <small class="text-muted">Auto</small>
+                    </label>
+                </div>
+                <a href="{% url 'inventario:device_list' %}"
+                   class="btn btn-sm btn-outline-primary">
+                    Ver todos <i class="bi bi-arrow-right"></i>
+                </a>
+            </div>
+        </div>
+
+        <div id="devices-container" class="row g-3">
+            <div class="col-12 text-center text-muted py-5">
+                <div class="spinner-border text-primary" role="status"></div>
+                <p class="mt-3">Cargando estado de los equipos...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ======================================================== -->
+    <!-- ALERTAS RECIENTES                                        -->
+    <!-- ======================================================== -->
+    <div class="col-lg-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="mb-0">
+                <i class="bi bi-bell"></i> Alertas recientes
+            </h5>
+            <a href="{% url 'alertas:alert_list' %}"
+               class="btn btn-sm btn-outline-secondary">
+                Ver todas
+            </a>
+        </div>
+
+        <div class="card">
+            <div class="list-group list-group-flush" style="max-height: 700px; overflow-y: auto;">
+                {% for alert in recent_alerts %}
+                <div class="list-group-item py-2">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div class="flex-grow-1">
+                            <div>
+                                <span class="badge
+                                    {% if alert.severity == 'critical' %}bg-danger
+                                    {% elif alert.severity == 'warning' %}bg-warning text-dark
+                                    {% else %}bg-info{% endif %}">
+                                    {{ alert.get_severity_display }}
+                                </span>
+                                {% if alert.device %}
+                                <a href="{% url 'inventario:device_detail' alert.device.id %}"
+                                   class="ms-1 small text-decoration-none">
+                                    {{ alert.device.name }}
+                                </a>
+                                {% endif %}
+                            </div>
+                            <div class="small mt-1">{{ alert.message|truncatechars:70 }}</div>
+                            <small class="text-muted">
+                                {{ alert.created_at|timesince }} atrás
+                            </small>
+                        </div>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="list-group-item text-center text-muted py-5">
+                    <i class="bi bi-check-circle" style="font-size: 2rem; color: #198754;"></i>
+                    <p class="mb-0 mt-2">Sin alertas recientes</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// ============================================================
+// HELPERS
+// ============================================================
+function formatBps(v) {
+    if (v === null || v === undefined) return '—';
+    if (v >= 1e9) return (v / 1e9).toFixed(1) + 'G';
+    if (v >= 1e6) return (v / 1e6).toFixed(1) + 'M';
+    if (v >= 1e3) return (v / 1e3).toFixed(1) + 'K';
+    return v.toFixed(0);
+}
+
+function relativeTime(isoTs) {
+    if (!isoTs) return '—';
+    const d = new Date(isoTs);
+    const diff = Math.floor((Date.now() - d.getTime()) / 1000);
+    if (diff < 5) return 'ahora';
+    if (diff < 60) return `hace ${diff}s`;
+    if (diff < 3600) return `hace ${Math.floor(diff / 60)}m`;
+    if (diff < 86400) return `hace ${Math.floor(diff / 3600)}h`;
+    return `hace ${Math.floor(diff / 86400)}d`;
+}
+
+function roleBadge(role) {
+    const classes = {
+        'core': 'badge-core',
+        'distribution': 'badge-distribution',
+        'access': 'badge-access',
+        'cpe': 'badge-cpe',
+    };
+    const labels = {
+        'core': 'Core',
+        'distribution': 'Distrib.',
+        'access': 'Acceso',
+        'cpe': 'CPE',
+    };
+    return `<span class="badge badge-role ${classes[role] || 'badge-cpe'}">
+                ${labels[role] || role}
+            </span>`;
+}
+
+function escapeHtml(s) {
+    if (s === null || s === undefined) return '';
+    return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+// ============================================================
+// RENDER DE TARJETA COMPACTA
+// ============================================================
+function renderDeviceCard(device) {
+    const icmp = device.icmp;
+    const health = device.health;
+    const traffic = device.traffic || [];
+
+    // --- Estado online / caído ---
+    let onlineStatus, onlineClass, onlineIcon;
+    if (!icmp || icmp.alive === null || icmp.alive === undefined) {
+        onlineStatus = 'Sin datos';
+        onlineClass = 'text-muted';
+        onlineIcon = 'question-circle';
+    } else if (icmp.alive) {
+        onlineStatus = 'En línea';
+        onlineClass = 'text-success';
+        onlineIcon = 'check-circle-fill';
+    } else {
+        onlineStatus = 'Caído';
+        onlineClass = 'text-danger';
+        onlineIcon = 'x-circle-fill';
+    }
+
+    // --- Primera interfaz con tráfico ---
+    let trafficLine = '';
+    if (traffic.length > 0) {
+        const t = traffic[0];
+        const alias = t.alias ? ` <small class="text-muted">(${escapeHtml(t.alias)})</small>` : '';
+        trafficLine = `
+            <div class="d-flex justify-content-between align-items-center small">
+                <div class="text-truncate" style="max-width: 110px;">
+                    <i class="bi bi-ethernet text-primary"></i>
+                    <strong>${escapeHtml(t.interface)}</strong>${alias}
+                </div>
+                <div class="text-nowrap">
+                    <span class="text-success">↓${formatBps(t.in_bps)}</span>
+                    <span class="text-warning ms-1">↑${formatBps(t.out_bps)}</span>
+                </div>
+            </div>
+            ${t.utilization !== null && t.utilization !== undefined ? `
+            <div class="progress mt-1" style="height: 4px;">
+                <div class="progress-bar ${t.utilization > 85 ? 'bg-danger' :
+                                            t.utilization > 70 ? 'bg-warning' : 'bg-info'}"
+                     style="width: ${Math.min(t.utilization, 100)}%;"></div>
+            </div>
+            ` : ''}
+        `;
+    } else if (device.has_traffic) {
+        trafficLine = `
+            <div class="small text-muted fst-italic">
+                <i class="bi bi-ethernet"></i> Sin datos de tráfico
+            </div>
+        `;
+    } else {
+        trafficLine = `
+            <div class="small text-muted fst-italic">
+                <i class="bi bi-ethernet"></i> Sin interfaces monitoreadas
+            </div>
+        `;
+    }
+
+    // --- Health ---
+    let healthLine = '';
+    if (device.has_health && health) {
+        const cpu = health.cpu !== null && health.cpu !== undefined
+            ? health.cpu.toFixed(0) + '%' : '—';
+        const mem = health.mem !== null && health.mem !== undefined
+            ? health.mem.toFixed(0) + '%' : '—';
+        const temp = health.temp !== null && health.temp !== undefined
+            ? health.temp.toFixed(0) + '°C' : '—';
+
+        const cpuCls = health.cpu > 90 ? 'text-danger' :
+                       health.cpu > 75 ? 'text-warning' : '';
+        const memCls = health.mem > 92 ? 'text-danger' :
+                       health.mem > 80 ? 'text-warning' : '';
+        const tempCls = health.temp > 85 ? 'text-danger' :
+                        health.temp > 70 ? 'text-warning' : '';
+
+        healthLine = `
+            <div class="d-flex justify-content-between small">
+                <span title="CPU">
+                    <i class="bi bi-cpu text-muted"></i>
+                    <span class="${cpuCls} fw-bold">${cpu}</span>
+                </span>
+                <span title="Memoria">
+                    <i class="bi bi-memory text-muted"></i>
+                    <span class="${memCls} fw-bold">${mem}</span>
+                </span>
+                <span title="Temperatura">
+                    <i class="bi bi-thermometer-half text-muted"></i>
+                    <span class="${tempCls} fw-bold">${temp}</span>
+                </span>
+            </div>
+        `;
+    } else if (device.has_health) {
+        healthLine = `
+            <div class="small text-muted fst-italic">
+                <i class="bi bi-heart-pulse"></i> Sin datos de health
+            </div>
+        `;
+    } else {
+        healthLine = `
+            <div class="small text-muted fst-italic">
+                <i class="bi bi-heart-pulse"></i> No aplica (no es Core/Distrib.)
+            </div>
+        `;
+    }
+
+    // --- Contadores de interfaces ---
+    const ifaceText = device.total_ifaces !== undefined
+        ? `${device.monitored_ifaces}/${device.total_ifaces}`
+        : '—';
+
+    // --- Render de la card ---
+    return `
+        <div class="col-md-6">
+            <div class="card device-compact-card h-100">
+                <div class="card-body p-3">
+
+                    <!-- Header: nombre + rol -->
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <div class="flex-grow-1" style="min-width: 0;">
+                            <a href="/equipos/${device.id}/"
+                               class="fw-bold text-decoration-none text-truncate d-block"
+                               title="${escapeHtml(device.name)}">
+                                ${escapeHtml(device.name)}
+                            </a>
+                            <small class="text-muted d-block text-truncate">
+                                <code>${escapeHtml(device.ip)}</code>
+                            </small>
+                        </div>
+                        <div class="ms-2">
+                            ${roleBadge(device.role)}
+                        </div>
+                    </div>
+
+                    <!-- Vendor / Ubicación -->
+                    <div class="small text-muted mb-2 text-truncate">
+                        <i class="bi bi-building"></i>
+                        ${escapeHtml(device.vendor) || 'Genérico'}
+                        ${device.location ? ' · ' + escapeHtml(device.location) : ''}
+                    </div>
+
+                    <!-- Estado online -->
+                    <div class="mb-2">
+                        <span class="${onlineClass} fw-bold small">
+                            <i class="bi bi-${onlineIcon}"></i> ${onlineStatus}
+                        </span>
+                        ${icmp && icmp.rtt !== null && icmp.rtt !== undefined ? `
+                        <span class="text-muted small ms-2">
+                            RTT ${icmp.rtt.toFixed(1)}ms
+                        </span>
+                        ` : ''}
+                        ${icmp && icmp.loss > 0 ? `
+                        <span class="text-warning small ms-2">
+                            <i class="bi bi-exclamation-triangle"></i>
+                            ${icmp.loss.toFixed(0)}% pérdida
+                        </span>
+                        ` : ''}
+                    </div>
+
+                    <!-- Tráfico (primera interfaz) -->
+                    <div class="border-top pt-2 mb-2">
+                        ${trafficLine}
+                    </div>
+
+                    <!-- Health -->
+                    <div class="border-top pt-2 mb-2">
+                        ${healthLine}
+                    </div>
+
+                    <!-- Footer: interfaces + botón -->
+                    <div class="border-top pt-2 d-flex justify-content-between align-items-center">
+                        <small class="text-muted">
+                            <i class="bi bi-ethernet"></i>
+                            <strong>${ifaceText}</strong> interfaces
+                        </small>
+                        <a href="/equipos/${device.id}/interfaces/"
+                           class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-gear"></i> Gestionar
+                        </a>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// ============================================================
+// CARGA DE DATOS
+// ============================================================
+let refreshTimer = null;
+
+async function loadDevices() {
+    try {
+        const response = await fetch("{% url 'monitoreo:devices_live' %}");
+        if (!response.ok) throw new Error('HTTP ' + response.status);
+
+        const data = await response.json();
+        const container = document.getElementById('devices-container');
+
+        if (!data.devices || data.devices.length === 0) {
+            container.innerHTML = `
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-body text-center text-muted py-5">
+                            <i class="bi bi-inbox" style="font-size: 3rem;"></i>
+                            <p class="mt-3 mb-2">No hay equipos activos.</p>
+                            {% if is_admin %}
+                            <a href="{% url 'inventario:device_create' %}"
+                               class="btn btn-primary btn-sm">
+                                <i class="bi bi-plus-lg"></i> Añadir el primero
+                            </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            `;
+            return;
+        }
+
+        container.innerHTML = data.devices.map(renderDeviceCard).join('');
+
+        const ts = new Date(data.timestamp);
+        document.getElementById('last-update').textContent =
+            ts.toLocaleTimeString('es-VE');
+    } catch (e) {
+        console.error('Error cargando equipos:', e);
+        document.getElementById('last-update').textContent = 'error';
+    }
+}
+
+function startAutoRefresh() {
+    if (refreshTimer) clearInterval(refreshTimer);
+    refreshTimer = setInterval(loadDevices, 15000);  // cada 15s
+}
+
+function stopAutoRefresh() {
+    if (refreshTimer) {
+        clearInterval(refreshTimer);
+        refreshTimer = null;
+    }
+}
+
+// ============================================================
+// INIT
+// ============================================================
+document.addEventListener('DOMContentLoaded', () => {
+    loadDevices();
+
+    const toggle = document.getElementById('auto-refresh');
+    if (toggle) {
+        toggle.addEventListener('change', () => {
+            if (toggle.checked) startAutoRefresh();
+            else stopAutoRefresh();
+        });
+        if (toggle.checked) startAutoRefresh();
+    }
+});
+</script>
+{% endblock %}

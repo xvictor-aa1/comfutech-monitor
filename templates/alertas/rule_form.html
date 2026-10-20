@@ -1,0 +1,1114 @@
+{% extends "base.html" %}
+{% block title %}{{ title }} - Comfutech Monitor{% endblock %}
+
+{% block content %}
+
+<!-- ============================================================ -->
+<!-- HEADER: título y botón volver                                -->
+<!-- ============================================================ -->
+<div class="d-flex justify-content-between align-items-start mb-4">
+    <div>
+        <h2 class="mb-1">{{ title }}</h2>
+        <p class="text-muted mb-0 small">
+            {% if is_edit %}
+                Modifica la regla existente. Los cambios se aplican en el próximo
+                ciclo de evaluación.
+            {% else %}
+                Define una nueva regla con uno o varios condicionales lógicos.
+            {% endif %}
+        </p>
+    </div>
+    <div class="btn-group">
+        <a href="{% url 'alertas:rule_list' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Volver
+        </a>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- ERRORES GLOBALES DEL FORMULARIO                              -->
+<!-- ============================================================ -->
+{% if form.non_field_errors %}
+<div class="alert alert-danger">
+    {% for err in form.non_field_errors %}<div>{{ err }}</div>{% endfor %}
+</div>
+{% endif %}
+
+<!-- ============================================================ -->
+<!-- FORMULARIO PRINCIPAL                                         -->
+<!-- ============================================================ -->
+<form method="post" id="rule-form" novalidate>
+    {% csrf_token %}
+
+    <div class="row g-4">
+
+        <!-- ============================================================ -->
+        <!-- COLUMNA IZQUIERDA: identificación, condicionales, mensaje   -->
+        <!-- ============================================================ -->
+        <div class="col-lg-8">
+
+            <!-- ========== IDENTIFICACIÓN ========== -->
+            <div class="card mb-4">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-tag text-primary"></i> Identificación
+                    </h5>
+                </div>
+                <div class="card-body">
+
+                    <div class="row">
+                        <div class="col-md-8 mb-3">
+                            <label class="form-label" for="{{ form.name.id_for_label }}">
+                                {{ form.name.label }} <span class="text-danger">*</span>
+                            </label>
+                            {{ form.name }}
+                            {% if form.name.errors %}
+                            <div class="text-danger small mt-1">{{ form.name.errors.0 }}</div>
+                            {% endif %}
+                            <div class="form-text">
+                                Sé descriptivo. Ej: <em>Alerta de saturación Core</em>.
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label" for="{{ form.severity.id_for_label }}">
+                                {{ form.severity.label }}
+                            </label>
+                            {{ form.severity }}
+                            {% if form.severity.errors %}
+                            <div class="text-danger small mt-1">{{ form.severity.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label" for="{{ form.description.id_for_label }}">
+                            {{ form.description.label }}
+                        </label>
+                        {{ form.description }}
+                        <div class="form-text">Notas opcionales para documentar la regla.</div>
+                    </div>
+
+                    <hr class="my-3">
+
+                    <!-- Toggle: Regla activa -->
+                    <div class="form-check form-switch mb-2">
+                        {{ form.enabled }}
+                        <label class="form-check-label" for="{{ form.enabled.id_for_label }}">
+                            <strong>Regla activa</strong>
+                            <span class="text-muted small d-block">
+                                Si está desactivada, no se evalúa y no dispara alertas.
+                            </span>
+                        </label>
+                    </div>
+
+                    <!-- Toggle: Disparar solo una vez -->
+                    <div class="form-check form-switch mb-2">
+                        {{ form.fire_once }}
+                        <label class="form-check-label" for="{{ form.fire_once.id_for_label }}">
+                            <strong>Disparar solo una vez</strong>
+                            <span class="text-muted small d-block">
+                                La regla solo disparará <strong>una vez</strong> por
+                                periodo de violación. No volverá a
+                                disparar hasta que la(s) condición(es) deje de
+                                cumplirse y vuelva a cumplirse nuevamente la(s) misma(s) condición(es).
+                                Útil para notificaciones de
+                                <em>"devuelta en línea"</em>.
+                            </span>
+                        </label>
+                    </div>
+
+                    <!-- Toggle: Omitir al iniciar el monitor -->
+                    <div class="form-check form-switch">
+                        {{ form.skip_on_startup }}
+                        <label class="form-check-label" for="{{ form.skip_on_startup.id_for_label }}">
+                            <strong>Omitir al iniciar el monitor</strong>
+                            <span class="text-muted small d-block">
+                                No se evalúa durante los primeros 120s tras
+                                arrancar el monitor.
+                            </span>
+                        </label>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- ========== CONDICIONALES ========== -->
+            <div class="card mb-4">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="bi bi-funnel text-warning"></i> Condicionales
+                        <span class="badge bg-secondary ms-2"
+                              id="conditionals-count-badge">0</span>
+                    </h5>
+                    <button type="button" class="btn btn-sm btn-primary"
+                            id="btn-add-conditional">
+                        <i class="bi bi-plus-lg"></i> Agregar Condicional
+                    </button>
+                </div>
+                <div class="card-body">
+
+                    <div class="alert alert-light border small mb-3">
+                        <i class="bi bi-info-circle"></i>
+                        Agrega de 1 a <strong>{{ max_conditionals }} condicionales</strong>.
+                        Cada condicional tiene su propio equipo, métrica y umbral.
+                        Los condicionales se combinan con operadores lógicos
+                        <code>AND</code> / <code>OR</code>.
+                    </div>
+
+                    <div id="conditionals-container">
+                        <!-- Los condicionales se generan por JS -->
+                    </div>
+
+                    <div class="text-center mt-2" id="no-conditionals-msg"
+                         style="display: none;">
+                        <p class="text-muted small mb-0">
+                            <i class="bi bi-arrow-up"></i>
+                            Pulsa <strong>"Agregar Condicional"</strong> para
+                            empezar.
+                        </p>
+                    </div>
+
+                    <input type="hidden" name="conditionals_json"
+                           id="id_conditionals_json" value="">
+                </div>
+            </div>
+
+            <!-- ========== MENSAJE PERSONALIZADO ========== -->
+            <div class="card mb-4">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-chat-left-text text-info"></i> Mensaje personalizado
+                    </h5>
+                </div>
+                <div class="card-body">
+
+                    <p class="text-muted small mb-2">
+                        Si lo dejas vacío, se genera un mensaje automático.
+                    </p>
+
+                    {{ form.custom_message }}
+                    {% if form.custom_message.errors %}
+                    <div class="text-danger small mt-1">{{ form.custom_message.errors.0 }}</div>
+                    {% endif %}
+
+                    <!-- Vista previa -->
+                    <div class="mt-3">
+                        <label class="form-label small text-muted">Vista previa:</label>
+                        <div class="alert alert-light border mb-0 py-2 px-3">
+                            <small id="message-preview" class="text-break">
+                                <em class="text-muted">
+                                    [Se generará automáticamente al dispararse]
+                                </em>
+                            </small>
+                        </div>
+                    </div>
+
+                    <!-- Placeholders disponibles -->
+                    <div class="mt-3">
+                        <small class="text-muted d-block mb-1">
+                            <i class="bi bi-braces"></i> Placeholders disponibles
+                            (clic para insertar):
+                        </small>
+                        <div class="d-flex flex-wrap gap-1" id="placeholders-list">
+                            <!-- Generados por JS -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- ============================================================ -->
+        <!-- COLUMNA DERECHA: notificación + ayuda + resumen              -->
+        <!-- ============================================================ -->
+        <div class="col-lg-4">
+
+            <!-- ========== NOTIFICACIÓN ========== -->
+            <div class="card mb-4">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-telegram text-primary"></i> Notificación
+                    </h5>
+                </div>
+                <div class="card-body">
+
+                    <div class="form-check form-switch mb-3">
+                        {{ form.telegram_enabled }}
+                        <label class="form-check-label" for="{{ form.telegram_enabled.id_for_label }}">
+                            <strong>Enviar por Telegram</strong>
+                        </label>
+                    </div>
+
+                    <div id="telegram-cooldown-group">
+                        <label class="form-label" for="{{ form.telegram_cooldown_sec.id_for_label }}">
+                            {{ form.telegram_cooldown_sec.label }}
+                        </label>
+                        {{ form.telegram_cooldown_sec }}
+                        {% if form.telegram_cooldown_sec.errors %}
+                        <div class="text-danger small mt-1">{{ form.telegram_cooldown_sec.errors.0 }}</div>
+                        {% endif %}
+                        <div class="form-text">
+                            Tiempo mínimo entre notificaciones de esta regla
+                            (mín. 60s).
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ============================================================ -->
+            <!-- =========== AYUDA RÁPIDA (siempre visible) ================= -->
+            <!-- ============================================================ -->
+            <div class="card mb-4 border-warning">
+                <div class="card-header bg-warning bg-opacity-10 d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="bi bi-question-circle text-info"></i>
+                        Ayuda rápida
+                    </h5>
+                </div>
+                <div class="card-body">
+
+                    <!-- ============================================ -->
+                    <!-- A. Prioridades de las alertas                -->
+                    <!-- ============================================ -->
+                    <div class="mb-3">
+                        <strong class="d-block mb-2" style="font-size: 0.85rem;">
+                            <i class="bi bi-exclamation-triangle text-warning"></i>
+                            Prioridades de las alertas
+                        </strong>
+                        <ul class="list-unstyled small mb-0 ps-1">
+                            <li class="mb-2">
+                                <span class="badge bg-info me-2">Info</span>
+                                Informativo, no urgente
+                            </li>
+                            <li class="mb-2">
+                                <span class="badge bg-warning text-dark me-2">Advertencia</span>
+                                Requiere atención pronto
+                            </li>
+                            <li class="mb-0">
+                                <span class="badge bg-danger me-2">Crítica</span>
+                                Requiere atención inmediata
+                            </li>
+                        </ul>
+                    </div>
+
+                    <hr class="my-3">
+
+                    <!-- ============================================ -->
+                    <!-- B. Guía de métricas (todas visibles)         -->
+                    <!-- ============================================ -->
+                    <div>
+                        <strong class="d-block mb-2" style="font-size: 0.85rem;">
+                            <i class="bi bi-lightbulb text-warning"></i>
+                            Guía de métricas
+                        </strong>
+
+                        <!-- ---------- device_down ---------- -->
+                        <div class="mb-3">
+                            <strong class="d-block text-primary" style="font-size: 0.82rem;">
+                                <i class="bi bi-power"></i> Caída del dispositivo (ICMP)
+                            </strong>
+                            <div class="small text-muted mt-1">
+                                Detecta cuando el equipo <strong>deja de responder a ICMP</strong>.
+                                <br>
+                                <span class="text-success">• Valor 0</span> = alerta cuando
+                                el equipo está <em>caído</em> (caso típico).
+                                <br>
+                                <span class="text-info">• Valor 1</span> = alerta cuando
+                                el equipo está <em>vivo</em>. Útil para notificaciones de
+                                "vuelta en línea" combinado con
+                                <em>Disparar solo una vez</em>.
+                            </div>
+                        </div>
+
+                        <!-- ---------- latency_ms ---------- -->
+                        <div class="mb-3">
+                            <strong class="d-block text-primary" style="font-size: 0.82rem;">
+                                <i class="bi bi-stopwatch"></i> Latencia ICMP (ms)
+                            </strong>
+                            <div class="small text-muted mt-1">
+                                Mide el <strong>tiempo de respuesta ICMP</strong> en
+                                milisegundos.
+                                <br>
+                                Valores típicos: <code>1–20 ms</code> (LAN),
+                                <code>20–80 ms</code> (WAN normal).
+                                <br>
+                                <span class="text-muted">Recomendado: alertar si supera
+                                <strong>80 ms</strong> (warning) o
+                                <strong>150 ms</strong> (critical).</span>
+                            </div>
+                        </div>
+
+                        <!-- ---------- packet_loss_pct ---------- -->
+                        <div class="mb-3">
+                            <strong class="d-block text-primary" style="font-size: 0.82rem;">
+                                <i class="bi bi-wifi-off"></i> Pérdida de paquetes (%)
+                            </strong>
+                            <div class="small text-muted mt-1">
+                                Porcentaje de <strong>paquetes ICMP perdidos</strong>
+                                en el ciclo de polling.
+                                <br>
+                                Valores típicos: <code>0%</code> (perfecto),
+                                <code>&lt;1%</code> (normal en WAN).
+                                <br>
+                                <span class="text-muted">Recomendado: alertar si supera
+                                <strong>2%</strong> (warning) o
+                                <strong>5%</strong> (critical).</span>
+                            </div>
+                        </div>
+
+                        <!-- ---------- utilization_pct ---------- -->
+                        <div class="mb-3">
+                            <strong class="d-block text-primary" style="font-size: 0.82rem;">
+                                <i class="bi bi-speedometer"></i> Utilización de enlace (%)
+                            </strong>
+                            <div class="small text-muted mt-1">
+                                <strong>Porcentaje de uso del enlace</strong>
+                                calculado sobre la capacidad de la interfaz.
+                                <br>
+                                <span class="text-muted">Recomendado: alertar si supera
+                                <strong>70%</strong> (warning) o
+                                <strong>85%</strong> (critical).</span>
+                                <br>
+                                Requiere tener una o más interfaces marcadas como
+                                <em>monitoreadas</em> en el equipo.
+                            </div>
+                        </div>
+
+                        <!-- ---------- cpu_pct ---------- -->
+                        <div class="mb-3">
+                            <strong class="d-block text-primary" style="font-size: 0.82rem;">
+                                <i class="bi bi-cpu"></i> CPU (%)
+                            </strong>
+                            <div class="small text-muted mt-1">
+                                <strong>Uso del procesador</strong> del equipo
+                                (medido vía SNMP).
+                                <br>
+                                Valores típicos: <code>5–40%</code>
+                                (operación normal).
+                                <br>
+                                <span class="text-muted">Recomendado: alertar si supera
+                                <strong>75%</strong> (warning) o
+                                <strong>90%</strong> (critical)
+                                sostenidamente.</span>
+                                <br>
+                                Solo disponible para equipos con rol
+                                <strong>Core</strong> o <strong>Distribution</strong>.
+                            </div>
+                        </div>
+
+                        <!-- ---------- mem_pct ---------- -->
+                        <div class="mb-3">
+                            <strong class="d-block text-primary" style="font-size: 0.82rem;">
+                                <i class="bi bi-memory"></i> Memoria RAM (%)
+                            </strong>
+                            <div class="small text-muted mt-1">
+                                <strong>Uso de memoria RAM</strong> del equipo
+                                (medido vía SNMP).
+                                <br>
+                                Valores típicos: <code>30–70%</code>
+                                (operación normal).
+                                <br>
+                                <span class="text-muted">Recomendado: alertar si supera
+                                <strong>80%</strong> (warning) o
+                                <strong>92%</strong> (critical).</span>
+                                <br>
+                                Solo disponible para equipos con rol
+                                <strong>Core</strong> o <strong>Distribution</strong>.
+                            </div>
+                        </div>
+
+                        <!-- ---------- temp_c ---------- -->
+                        <div class="mb-0">
+                            <strong class="d-block text-primary" style="font-size: 0.82rem;">
+                                <i class="bi bi-thermometer-half"></i> Temperatura (°C)
+                            </strong>
+                            <div class="small text-muted mt-1">
+                                <strong>Temperatura del chasis</strong> del
+                                equipo en grados Celsius.
+                                <br>
+                                Valores típicos: <code>30–50 °C</code>
+                                (ambiente normal), <code>50–65 °C</code>
+                                (bajo carga).
+                                <br>
+                                <span class="text-muted">Recomendado: alertar si supera
+                                <strong>70 °C</strong> (warning) o
+                                <strong>85 °C</strong> (critical).</span>
+                                <br>
+                                Solo disponible en equipos con sensor de
+                                temperatura (algunos modelos).
+                            </div>
+                        </div>
+
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- ========== RESUMEN ========== -->
+            <div class="card mb-4 border-info">
+                <div class="card-header bg-info bg-opacity-10">
+                    <h5 class="mb-0">
+                        <i class="bi bi-eye text-info"></i> Resumen
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div id="summary-content">
+                        <em class="text-muted small">
+                            Agrega condicionales para ver el resumen.
+                        </em>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- BOTONES DE ACCIÓN                                            -->
+    <!-- ============================================================ -->
+    <div class="d-flex justify-content-between align-items-center mt-4">
+        <a href="{% url 'alertas:rule_list' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Cancelar
+        </a>
+        <div>
+            {% if is_edit %}
+            <a href="{% url 'alertas:rule_delete' rule.id %}"
+               class="btn btn-outline-danger me-2">
+                <i class="bi bi-trash"></i> Eliminar
+            </a>
+            {% endif %}
+            <button type="submit" class="btn btn-primary btn-lg">
+                <i class="bi bi-save"></i>
+                {% if is_edit %}Guardar cambios{% else %}Crear regla{% endif %}
+            </button>
+        </div>
+    </div>
+
+</form>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// ============================================================
+// DATOS DEL BACKEND (inyectados por Django)
+// ============================================================
+const CF_DEVICES = [
+    {% for d in devices %}
+    { id: {{ d.id }}, name: "{{ d.name|escapejs }}", ip: "{{ d.ip|escapejs }}" },
+    {% endfor %}
+];
+
+const CF_METRICS = [
+    {% for value, label in metrics %}
+    { value: "{{ value }}", label: "{{ label|escapejs }}" },
+    {% endfor %}
+];
+
+const CF_OPERATORS = [
+    {% for value, label in operators %}
+    { value: "{{ value }}", label: "{{ label|escapejs }}" },
+    {% endfor %}
+];
+
+const CF_LOGICS = [
+    {% for value, label in logics %}
+    { value: "{{ value }}", label: "{{ label|escapejs }}" },
+    {% endfor %}
+];
+
+const CF_MAX_CONDITIONALS = {{ max_conditionals }};
+const CF_EXISTING = {{ existing_conditionals|safe }};
+
+// ============================================================
+// MAPPING DE OPERADORES POR MÉTRICA (sincronizado con backend)
+// ============================================================
+const CF_VALID_OPERATORS = {
+    "device_down":      ["eq"],
+    "latency_ms":       ["gte", "gt"],
+    "packet_loss_pct":  ["gte", "gt"],
+    "utilization_pct":  ["gte", "gt"],
+    "cpu_pct":          ["gte", "gt"],
+    "mem_pct":          ["gte", "gt"],
+    "temp_c":           ["gte", "gt"],
+};
+
+// ============================================================
+// UNIDADES POR MÉTRICA (para mostrar junto al umbral)
+// ============================================================
+const CF_METRIC_UNITS = {
+    "device_down":      "",
+    "latency_ms":       "ms",
+    "packet_loss_pct":  "%",
+    "utilization_pct":  "%",
+    "cpu_pct":          "%",
+    "mem_pct":          "%",
+    "temp_c":           "°C",
+};
+
+// ============================================================
+// TEXTOS DE AYUDA CORTA (debajo del umbral en cada condicional)
+// ============================================================
+const CF_METRIC_HELP_SHORT = {
+    "device_down":      "0 = caído, 1 = vivo",
+    "latency_ms":       "Alerta si ≥ 80 ms (warning) o 150 ms (critical)",
+    "packet_loss_pct":  "Alerta si ≥ 2 % (warning) o 5 % (critical)",
+    "utilization_pct":  "Alerta si ≥ 70 % (warning) o 85 % (critical)",
+    "cpu_pct":          "Alerta si ≥ 75 % (warning) o 90 % (critical)",
+    "mem_pct":          "Alerta si ≥ 80 % (warning) o 92 % (critical)",
+    "temp_c":           "Alerta si ≥ 70 °C (warning) o 85 °C (critical)",
+};
+
+// ============================================================
+// ESTADO DE LA UI
+// ============================================================
+let condCounter = 0;  // contador de condicionales en la UI
+
+// ============================================================
+// HELPERS
+// ============================================================
+/**
+ * Devuelve el objeto de un dispositivo por su ID.
+ * @param {number} id - ID del dispositivo.
+ * @returns {object|null} - { id, name, ip } o null.
+ */
+function getDeviceById(id) {
+    return CF_DEVICES.find(d => d.id === id) || null;
+}
+
+/**
+ * Escapa caracteres HTML peligrosos.
+ * @param {string} s - Texto a escapar.
+ * @returns {string} - Texto seguro para insertar como HTML.
+ */
+function escapeHtml(s) {
+    if (s === null || s === undefined) return "";
+    return String(s)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
+// ============================================================
+// RENDERIZADO DE UN CONDICIONAL
+// ============================================================
+/**
+ * Genera el HTML de un bloque de condicional.
+ * @param {number} index - número entero (1, 2, 3...) para ID y names.
+ * @param {object} data  - { device_id, metric, operator, threshold, duration_sec, logic }
+ * @returns {string} HTML del bloque.
+ */
+function renderConditional(index, data) {
+    const showLogic = index > 1;  // el primero no necesita lógica
+
+    // Opciones de devices
+    const deviceOptions = CF_DEVICES.map(d => {
+        const selected = (data.device_id === d.id) ? "selected" : "";
+        return `<option value="${d.id}" ${selected}>${escapeHtml(d.name)} (${escapeHtml(d.ip)})</option>`;
+    }).join("");
+
+    // Opciones de métricas
+    const metricOptions = CF_METRICS.map(m => {
+        const selected = (data.metric === m.value) ? "selected" : "";
+        return `<option value="${m.value}" ${selected}>${escapeHtml(m.label)}</option>`;
+    }).join("");
+
+    // Opciones de lógica (solo si index > 1)
+    let logicOptions = "";
+    if (showLogic) {
+        logicOptions = CF_LOGICS.map(l => {
+            const selected = (data.logic === l.value) ? "selected" : "";
+            return `<option value="${l.value}" ${selected}>${escapeHtml(l.label)}</option>`;
+        }).join("");
+    }
+
+    return `
+    <div class="conditional-block card mb-3 border-primary" data-index="${index}">
+        <div class="card-header bg-primary bg-opacity-10 d-flex justify-content-between align-items-center py-2">
+            <strong class="small">
+                <i class="bi bi-diagram-2"></i> Condicional ${index}
+            </strong>
+            <button type="button" class="btn btn-sm btn-outline-danger btn-remove-conditional"
+                    title="Eliminar condicional"
+                    ${index === 1 ? 'style="display:none;"' : ''}>
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+        <div class="card-body py-2">
+
+            ${showLogic ? `
+            <div class="row mb-2">
+                <div class="col-12">
+                    <label class="form-label small mb-1">
+                        <i class="bi bi-signpost-split"></i> Se combina con el anterior:
+                    </label>
+                    <select class="form-select form-select-sm cond-logic">
+                        ${logicOptions}
+                    </select>
+                </div>
+            </div>
+            ` : ''}
+
+            <div class="row g-2">
+                <div class="col-md-6">
+                    <label class="form-label small mb-1">Equipo <span class="text-danger">*</span></label>
+                    <select class="form-select form-select-sm cond-device" required>
+                        <option value="">— Seleccione —</option>
+                        ${deviceOptions}
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label small mb-1">Métrica <span class="text-danger">*</span></label>
+                    <select class="form-select form-select-sm cond-metric" required>
+                        ${metricOptions}
+                    </select>
+                </div>
+            </div>
+
+            <div class="row g-2 mt-1">
+                <div class="col-md-4">
+                    <label class="form-label small mb-1">Operador</label>
+                    <select class="form-select form-select-sm cond-operator"></select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label small mb-1">
+                        Umbral <span class="cond-unit text-muted"></span>
+                    </label>
+                    <input type="number" step="0.01"
+                           class="form-control form-control-sm cond-threshold"
+                           value="${data.threshold ?? 0}">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label small mb-1">Duración (s)</label>
+                    <input type="number" min="0" max="86400"
+                           class="form-control form-control-sm cond-duration"
+                           value="${data.duration_sec ?? 60}">
+                </div>
+            </div>
+
+            <div class="mt-1">
+                <small class="text-muted cond-help"></small>
+            </div>
+        </div>
+    </div>
+    `;
+}
+
+// ============================================================
+// ACTUALIZAR OPERADORES Y AYUDA CORTA SEGÚN MÉTRICA
+// ============================================================
+/**
+ * Refresca el select de operadores, la unidad y el texto de ayuda
+ * corta según la métrica seleccionada en el bloque.
+ * @param {HTMLElement} block - bloque del condicional.
+ */
+function refreshOperators(block) {
+    const metricSelect = block.querySelector(".cond-metric");
+    const operatorSelect = block.querySelector(".cond-operator");
+    const thresholdInput = block.querySelector(".cond-threshold");
+    const unitSpan = block.querySelector(".cond-unit");
+    const helpSpan = block.querySelector(".cond-help");
+
+    const metric = metricSelect.value;
+    const currentOp = operatorSelect.value;
+
+    // Obtener operadores válidos
+    const ops = CF_VALID_OPERATORS[metric] || [];
+    operatorSelect.innerHTML = "";
+    ops.forEach(op => {
+        const label = CF_OPERATORS.find(o => o.value === op)?.label || op;
+        const opt = document.createElement("option");
+        opt.value = op;
+        opt.textContent = label;
+        if (op === currentOp) opt.selected = true;
+        operatorSelect.appendChild(opt);
+    });
+
+    // Unidad
+    unitSpan.textContent = CF_METRIC_UNITS[metric]
+        ? `(${CF_METRIC_UNITS[metric]})`
+        : "";
+
+    // Texto de ayuda corto
+    helpSpan.innerHTML = CF_METRIC_HELP_SHORT[metric] || "";
+
+    // device_down: forzar eq y bloquear valores 0/1
+    if (metric === "device_down") {
+        operatorSelect.value = "eq";
+        operatorSelect.disabled = true;
+        thresholdInput.readOnly = false;
+        thresholdInput.min = 0;
+        thresholdInput.max = 1;
+        thresholdInput.step = 1;
+        const v = parseInt(thresholdInput.value);
+        if (isNaN(v) || (v !== 0 && v !== 1)) {
+            thresholdInput.value = 0;
+        }
+    } else {
+        operatorSelect.disabled = false;
+        thresholdInput.removeAttribute("min");
+        thresholdInput.removeAttribute("max");
+        thresholdInput.step = "0.01";
+    }
+}
+
+// ============================================================
+// AGREGAR UN NUEVO CONDICIONAL
+// ============================================================
+/**
+ * Inserta un nuevo bloque de condicional en el DOM.
+ * @param {object} data - datos opcionales del condicional. Si no se pasa,
+ *                        se usan valores por defecto.
+ */
+function addConditional(data = null) {
+    if (condCounter >= CF_MAX_CONDITIONALS) {
+        alert("Se alcanzó el máximo de " + CF_MAX_CONDITIONALS + " condicionales.");
+        return;
+    }
+
+    condCounter++;
+    const index = condCounter;
+
+    // Datos por defecto
+    const condData = data || {
+        device_id: null,
+        metric: "cpu_pct",
+        operator: "gte",
+        threshold: 75,
+        duration_sec: 60,
+        logic: "AND",
+    };
+
+    const container = document.getElementById("conditionals-container");
+    container.insertAdjacentHTML("beforeend", renderConditional(index, condData));
+
+    // Obtener el bloque recién insertado
+    const block = container.lastElementChild;
+
+    // Actualizar operadores según métrica
+    refreshOperators(block);
+
+    // Configurar listeners del bloque
+    setupConditionalListeners(block);
+
+    // Actualizar UI
+    updateCountBadge();
+    updatePlaceholdersList();
+    updateSummary();
+    updateRemoveButtons();
+
+    // Ocultar mensaje "no condicionales"
+    document.getElementById("no-conditionals-msg").style.display = "none";
+}
+
+// ============================================================
+// CONFIGURAR LISTENERS DE UN BLOQUE DE CONDICIONAL
+// ============================================================
+/**
+ * Agrega los listeners necesarios a un bloque de condicional.
+ * @param {HTMLElement} block - bloque del condicional.
+ */
+function setupConditionalListeners(block) {
+    const metricSelect = block.querySelector(".cond-metric");
+    const operatorSelect = block.querySelector(".cond-operator");
+    const thresholdInput = block.querySelector(".cond-threshold");
+    const durationInput = block.querySelector(".cond-duration");
+    const deviceSelect = block.querySelector(".cond-device");
+    const logicSelect = block.querySelector(".cond-logic");
+    const removeBtn = block.querySelector(".btn-remove-conditional");
+
+    metricSelect.addEventListener("change", () => {
+        refreshOperators(block);
+        updateSummary();
+    });
+    operatorSelect.addEventListener("change", updateSummary);
+    thresholdInput.addEventListener("input", updateSummary);
+    durationInput.addEventListener("input", updateSummary);
+    deviceSelect.addEventListener("change", updateSummary);
+    if (logicSelect) logicSelect.addEventListener("change", updateSummary);
+
+    if (removeBtn) {
+        removeBtn.addEventListener("click", () => {
+            if (condCounter <= 1) {
+                alert("Debe haber al menos 1 condicional.");
+                return;
+            }
+            if (confirm("¿Eliminar este condicional?")) {
+                block.remove();
+                condCounter--;
+                renumberConditionals();
+                updateCountBadge();
+                updatePlaceholdersList();
+                updateSummary();
+                updateRemoveButtons();
+            }
+        });
+    }
+}
+
+// ============================================================
+// RENUMERAR LOS CONDICIONALES TRAS ELIMINAR UNO
+// ============================================================
+function renumberConditionals() {
+    const blocks = document.querySelectorAll(".conditional-block");
+    blocks.forEach((b, i) => {
+        const num = i + 1;
+        b.dataset.index = num;
+        b.querySelector(".card-header strong").innerHTML =
+            `<i class="bi bi-diagram-2"></i> Condicional ${num}`;
+    });
+}
+
+// ============================================================
+// MOSTRAR/OCULTAR BOTONES DE ELIMINAR
+// ============================================================
+function updateRemoveButtons() {
+    const blocks = document.querySelectorAll(".conditional-block");
+    const shouldShow = blocks.length > 1;
+    blocks.forEach((b, i) => {
+        const btn = b.querySelector(".btn-remove-conditional");
+        if (i === 0) {
+            btn.style.display = "none";
+        } else {
+            btn.style.display = shouldShow ? "" : "none";
+        }
+    });
+}
+
+// ============================================================
+// BADGE DE CONTADOR DE CONDICIONALES
+// ============================================================
+function updateCountBadge() {
+    const badge = document.getElementById("conditionals-count-badge");
+    badge.textContent = condCounter;
+    badge.className = "badge ms-2 " +
+        (condCounter === CF_MAX_CONDITIONALS ? "bg-danger" : "bg-secondary");
+}
+
+// ============================================================
+// SERIALIZAR CONDICIONALES PARA ENVIAR AL BACKEND
+// ============================================================
+/**
+ * Serializa los condicionales del DOM a un array JSON.
+ * @returns {Array} lista de condicionales.
+ */
+function serializeConditionals() {
+    const blocks = document.querySelectorAll(".conditional-block");
+    const result = [];
+    blocks.forEach((b, i) => {
+        const deviceId = b.querySelector(".cond-device").value;
+        const metric = b.querySelector(".cond-metric").value;
+        const operator = b.querySelector(".cond-operator").value;
+        const threshold = parseFloat(b.querySelector(".cond-threshold").value) || 0;
+        const duration = parseInt(b.querySelector(".cond-duration").value) || 60;
+        const logicSelect = b.querySelector(".cond-logic");
+        const logic = (i === 0 || !logicSelect) ? null : logicSelect.value;
+
+        if (!deviceId) return;  // saltar condicionales sin device
+
+        result.push({
+            device_id: parseInt(deviceId),
+            metric: metric,
+            operator: operator,
+            threshold: threshold,
+            duration_sec: duration,
+            logic: logic,
+        });
+    });
+    return result;
+}
+
+// ============================================================
+// PLACEHOLDERS DISPONIBLES (dinámicos según nº de condicionales)
+// ============================================================
+function updatePlaceholdersList() {
+    const container = document.getElementById("placeholders-list");
+    const n = condCounter;
+
+    // Placeholders globales
+    const placeholders = [
+        "{rule_name}", "{severity}", "{timestamp}", "{conditionals_count}",
+    ];
+
+    // Placeholders sin número (del primer condicional)
+    if (n >= 1) {
+        placeholders.push("{device}", "{ip}", "{metric}", "{value}", "{threshold}");
+    }
+
+    // Placeholders numerados
+    for (let i = 1; i <= n; i++) {
+        placeholders.push(`{device${i}}`);
+        placeholders.push(`{ip${i}}`);
+        placeholders.push(`{metric${i}}`);
+        placeholders.push(`{value${i}}`);
+        placeholders.push(`{threshold${i}}`);
+    }
+
+    container.innerHTML = placeholders.map(p =>
+        `<button type="button" class="btn btn-sm btn-outline-secondary placeholder-btn"
+                 data-ph="${p}" style="font-family: monospace; font-size: 0.72rem;">
+            ${p}
+        </button>`
+    ).join("");
+
+    // Listener para insertar en el textarea
+    container.querySelectorAll(".placeholder-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+            insertPlaceholder(btn.dataset.ph);
+        });
+    });
+}
+
+// ============================================================
+// INSERTAR PLACEHOLDER EN EL TEXTAREA DEL MENSAJE
+// ============================================================
+function insertPlaceholder(ph) {
+    const textarea = document.getElementById("id_custom_message");
+    if (!textarea) return;
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const text = textarea.value;
+    textarea.value = text.substring(0, start) + ph + text.substring(end);
+    textarea.focus();
+    textarea.selectionStart = textarea.selectionEnd = start + ph.length;
+    updateMessagePreview();
+}
+
+// ============================================================
+// VISTA PREVIA DEL MENSAJE PERSONALIZADO
+// ============================================================
+function updateMessagePreview() {
+    const textarea = document.getElementById("id_custom_message");
+    const preview = document.getElementById("message-preview");
+    if (!textarea || !preview) return;
+
+    const custom = textarea.value.trim();
+    if (!custom) {
+        preview.innerHTML =
+            '<em class="text-muted">[Se generará automáticamente al dispararse]</em>';
+        return;
+    }
+
+    const conds = serializeConditionals();
+    const values = {};
+
+    conds.forEach((c, i) => {
+        const idx = i + 1;
+        const device = getDeviceById(c.device_id);
+        const metricLabel = CF_METRICS.find(m => m.value === c.metric)?.label || c.metric;
+
+        values[`device${idx}`] = device?.name || `{device${idx}}`;
+        values[`ip${idx}`] = device?.ip || `{ip${idx}}`;
+        values[`metric${idx}`] = metricLabel;
+        values[`value${idx}`] = "0.00";
+        values[`threshold${idx}`] = c.threshold;
+
+        if (i === 0) {
+            values["device"] = device?.name || "{device}";
+            values["ip"] = device?.ip || "{ip}";
+            values["metric"] = metricLabel;
+            values["value"] = "0.00";
+            values["threshold"] = c.threshold;
+        }
+    });
+
+    values["rule_name"] = document.getElementById("id_name")?.value || "{rule_name}";
+    values["severity"] = document.getElementById("id_severity")?.value || "{severity}";
+    values["timestamp"] = new Date().toLocaleString();
+    values["conditionals_count"] = String(conds.length);
+
+    // Sustituir placeholders
+    let text = custom.replace(/\{(\w+)\}/g, (m, key) =>
+        values[key] !== undefined ? values[key] : m
+    );
+
+    preview.textContent = text;
+}
+
+// ============================================================
+// RESUMEN DE LA REGLA
+// ============================================================
+function updateSummary() {
+    const container = document.getElementById("summary-content");
+    const conds = serializeConditionals();
+
+    if (conds.length === 0) {
+        container.innerHTML =
+            '<em class="text-muted small">Agrega condicionales para ver el resumen.</em>';
+        return;
+    }
+
+    let html = "";
+    conds.forEach((c, i) => {
+        const device = getDeviceById(c.device_id);
+        const metricLabel = CF_METRICS.find(m => m.value === c.metric)?.label || c.metric;
+        const operatorLabel = CF_OPERATORS.find(o => o.value === c.operator)?.label || c.operator;
+
+        const prefix = (i > 0 && c.logic)
+            ? `<span class="badge bg-info text-dark me-1">${c.logic}</span>`
+            : "";
+
+        html += `
+        <div class="small mb-2">
+            ${prefix}
+            <strong>${escapeHtml(device?.name || "—")}</strong><br>
+            <code>${escapeHtml(metricLabel)} ${escapeHtml(operatorLabel)} ${c.threshold} (${c.duration_sec}s)</code>
+        </div>`;
+    });
+
+    container.innerHTML = html;
+}
+
+// ============================================================
+// INIT: configurar el formulario al cargar
+// ============================================================
+document.addEventListener("DOMContentLoaded", () => {
+    // Botón "Agregar Condicional"
+    document.getElementById("btn-add-conditional").addEventListener("click", () => {
+        addConditional();
+    });
+
+    // Cargar condicionales existentes (si es edición)
+    if (Array.isArray(CF_EXISTING) && CF_EXISTING.length > 0) {
+        CF_EXISTING.forEach(c => addConditional(c));
+    } else {
+        document.getElementById("no-conditionals-msg").style.display = "block";
+    }
+
+    // Vista previa del mensaje al escribir
+    const ta = document.getElementById("id_custom_message");
+    if (ta) ta.addEventListener("input", updateMessagePreview);
+
+    // Otros campos que afectan la vista previa
+    ["id_name", "id_severity"].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener("input", updateMessagePreview);
+    });
+
+    // Validaciones previas al envío
+    document.getElementById("rule-form").addEventListener("submit", (e) => {
+        const conds = serializeConditionals();
+
+        // Validación 1: al menos 1 condicional
+        if (conds.length === 0) {
+            e.preventDefault();
+            alert("Debes agregar al menos 1 condicional.");
+            return false;
+        }
+
+        // Validación 2: máximo permitido
+        if (conds.length > CF_MAX_CONDITIONALS) {
+            e.preventDefault();
+            alert("Máximo " + CF_MAX_CONDITIONALS + " condicionales.");
+            return false;
+        }
+
+        // Guardar el JSON en el campo oculto
+        document.getElementById("id_conditionals_json").value = JSON.stringify(conds);
+        return true;
+    });
+});
+</script>
+{% endblock %}

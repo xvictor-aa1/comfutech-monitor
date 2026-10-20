@@ -1,0 +1,262 @@
+{% extends "base.html" %}
+{% load sorting_tags %}
+{% block title %}Historial Discovery - {{ device.name }}{% endblock %}
+
+{% block content %}
+
+<!-- Breadcrumb -->
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item">
+            <a href="{% url 'inventario:device_list' %}">Equipos</a>
+        </li>
+        <li class="breadcrumb-item">
+            <a href="{% url 'inventario:device_detail' device.id %}">{{ device.name }}</a>
+        </li>
+        <li class="breadcrumb-item">
+            <a href="{% url 'inventario:device_interfaces' device.id %}">Interfaces</a>
+        </li>
+        <li class="breadcrumb-item active">Historial Discovery</li>
+    </ol>
+</nav>
+
+<!-- Header -->
+<div class="d-flex justify-content-between align-items-start mb-4">
+    <div>
+        <h2 class="mb-1">
+            <i class="bi bi-clock-history"></i>
+            Historial de Discovery
+        </h2>
+        <p class="text-muted mb-0 small">
+            Registro de ejecuciones del discovery SNMP para
+            <strong>{{ device.name }}</strong> ({{ device.ip }}).
+        </p>
+    </div>
+    <div class="btn-group">
+        <a href="{% url 'inventario:device_interfaces' device.id %}"
+           class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Volver a interfaces
+        </a>
+        {% if is_admin %}
+        <form method="post"
+              action="{% url 'monitoreo:run_discovery' device.id %}"
+              class="d-inline"
+              onsubmit="return confirm('¿Ejecutar Discovery ahora?');">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-success">
+                <i class="bi bi-arrow-repeat"></i> Ejecutar Discovery
+            </button>
+        </form>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Stats -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <a href="?status=" class="text-decoration-none">
+            <div class="card card-metric">
+                <div class="card-body">
+                    <div class="metric-value text-primary">{{ count_all }}</div>
+                    <div class="metric-label">Total ejecuciones</div>
+                </div>
+            </div>
+        </a>
+    </div>
+    <div class="col-md-3">
+        <a href="?status=success" class="text-decoration-none">
+            <div class="card card-metric">
+                <div class="card-body">
+                    <div class="metric-value text-success">{{ count_success }}</div>
+                    <div class="metric-label">Exitosas</div>
+                </div>
+            </div>
+        </a>
+    </div>
+    <div class="col-md-3">
+        <a href="?status=failed" class="text-decoration-none">
+            <div class="card card-metric">
+                <div class="card-body">
+                    <div class="metric-value text-danger">{{ count_failed }}</div>
+                    <div class="metric-label">Fallidas</div>
+                </div>
+            </div>
+        </a>
+    </div>
+    <div class="col-md-3">
+        <a href="?status=running" class="text-decoration-none">
+            <div class="card card-metric">
+                <div class="card-body">
+                    <div class="metric-value text-warning">{{ count_running }}</div>
+                    <div class="metric-label">En curso</div>
+                </div>
+            </div>
+        </a>
+    </div>
+</div>
+
+<!-- Buscador colapsable -->
+<div class="card mb-3">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center"
+         style="cursor: pointer;"
+         data-bs-toggle="collapse"
+         data-bs-target="#search-panel">
+        <div>
+            <i class="bi bi-search"></i>
+            <strong>Buscador avanzado</strong>
+            {% if has_filters %}
+            <span class="badge bg-primary ms-2">
+                <i class="bi bi-funnel-fill"></i> Filtros activos
+            </span>
+            {% endif %}
+        </div>
+        <div>
+            {% if has_filters %}
+            <a href="{% url 'monitoreo:discovery_history' device.id %}"
+               class="btn btn-sm btn-outline-secondary me-2"
+               onclick="event.stopPropagation();">
+                <i class="bi bi-x-lg"></i> Limpiar
+            </a>
+            {% endif %}
+            <i class="bi bi-chevron-down"></i>
+        </div>
+    </div>
+
+    <div id="search-panel" class="collapse {% if has_filters %}show{% endif %}">
+        <div class="card-body">
+            <form method="get" class="row g-2">
+                <input type="hidden" name="sort" value="{{ sort_key }}">
+                <input type="hidden" name="order" value="{{ order }}">
+
+                <div class="col-md-4">
+                    <label class="form-label small">Buscar en errores</label>
+                    <input type="text" name="q" value="{{ search }}" class="form-control"
+                           placeholder="Texto del error...">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small">Estado</label>
+                    <select name="status" class="form-select">
+                        <option value="">Todos</option>
+                        <option value="success" {% if status_filter == "success" %}selected{% endif %}>Exitosa</option>
+                        <option value="failed" {% if status_filter == "failed" %}selected{% endif %}>Fallida</option>
+                        <option value="running" {% if status_filter == "running" %}selected{% endif %}>En curso</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small">Disparado por</label>
+                    <select name="triggered_by" class="form-select">
+                        <option value="">Todos</option>
+                        {% for u in triggered_users %}
+                        <option value="{{ u.id }}"
+                                {% if triggered_filter == u.id|stringformat:"s" %}selected{% endif %}>
+                            {{ u.username }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small">Desde</label>
+                    <input type="date" name="date_from" value="{{ date_from }}" class="form-control">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small">Hasta</label>
+                    <input type="date" name="date_to" value="{{ date_to }}" class="form-control">
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary me-2">
+                        <i class="bi bi-search"></i> Filtrar
+                    </button>
+                    <a href="{% url 'monitoreo:discovery_history' device.id %}"
+                       class="btn btn-outline-secondary">Limpiar</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Tabla con ordenamiento -->
+<div class="card">
+    <div class="table-responsive">
+        <table class="table table-hover mb-0">
+            <thead class="table-light">
+                <tr>
+                    {% sortable_th "fecha" "Fecha" "150px" %}
+                    {% sortable_th "estado" "Estado" "110px" %}
+                    {% sortable_th "duracion" "Duración" "100px" %}
+                    {% sortable_th "encontradas" "Encontradas" "100px" %}
+                    {% sortable_th "nuevas" "Nuevas" "80px" %}
+                    {% sortable_th "actualizadas" "Actualizadas" "100px" %}
+                    {% sortable_th "eliminadas" "Eliminadas" "90px" %}
+                    {% sortable_th "disparado" "Disparado por" "130px" %}
+                    <th>Error</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for job in jobs %}
+                <tr>
+                    <td>
+                        <small>{{ job.started_at|date:"d/m/Y" }}</small><br>
+                        <small class="text-muted">{{ job.started_at|date:"H:i:s" }}</small>
+                    </td>
+                    <td>
+                        {% if job.status == "success" %}
+                            <span class="badge bg-success">Exitosa</span>
+                        {% elif job.status == "failed" %}
+                            <span class="badge bg-danger">Fallida</span>
+                        {% else %}
+                            <span class="badge bg-warning text-dark">En curso</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if job.duration_ms %}
+                            <code>{{ job.duration_ms }}ms</code>
+                        {% else %}—{% endif %}
+                    </td>
+                    <td class="text-center">
+                        <span class="badge bg-secondary">{{ job.interfaces_found }}</span>
+                    </td>
+                    <td class="text-center">
+                        {% if job.interfaces_created %}
+                            <span class="badge bg-primary">+{{ job.interfaces_created }}</span>
+                        {% else %}0{% endif %}
+                    </td>
+                    <td class="text-center">
+                        {% if job.interfaces_updated %}
+                            <span class="badge bg-info">{{ job.interfaces_updated }}</span>
+                        {% else %}0{% endif %}
+                    </td>
+                    <td class="text-center">
+                        {% if job.interfaces_deleted %}
+                            <span class="badge bg-danger">-{{ job.interfaces_deleted }}</span>
+                        {% else %}0{% endif %}
+                    </td>
+                    <td>
+                        {{ job.triggered_by.username|default:"sistema" }}
+                    </td>
+                    <td>
+                        {% if job.error_message %}
+                            <small class="text-danger">{{ job.error_message|truncatechars:70 }}</small>
+                        {% else %}
+                            <small class="text-muted">—</small>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="9" class="text-center text-muted py-5">
+                        <i class="bi bi-clock-history" style="font-size: 3rem;"></i>
+                        <p class="mt-3 mb-2">No hay ejecuciones registradas.</p>
+                        {% if is_admin %}
+                        <p class="text-muted small">
+                            Ejecuta el discovery para ver el historial aquí.
+                        </p>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% endblock %}

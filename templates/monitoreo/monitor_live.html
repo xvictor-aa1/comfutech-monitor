@@ -1,0 +1,648 @@
+{% extends "base.html" %}
+{% block title %}Monitoreo en vivo - Comfutech{% endblock %}
+
+{% block content %}
+
+<!-- ============================================================ -->
+<!-- Header                                                       -->
+<!-- ============================================================ -->
+<div class="d-flex justify-content-between align-items-start mb-4">
+    <div>
+        <h2 class="mb-1"><i class="bi bi-broadcast"></i> Monitoreo en vivo</h2>
+        <p class="text-muted mb-0 small">
+            Métricas en tiempo real de los {{ devices_count }} equipos activos
+            ({{ monitored_count }} con interfaces monitoreadas).
+        </p>
+    </div>
+    <div class="btn-group">
+        <a href="{% url 'monitoreo:monitor_status' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-activity"></i> Estado del servicio
+        </a>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- Toolbar                                                      -->
+<!-- ============================================================ -->
+<div class="card mb-3">
+    <div class="card-body py-2 d-flex flex-wrap align-items-center gap-2">
+        <small class="text-muted">
+            <i class="bi bi-clock"></i>
+            Actualizado: <span id="last-update">—</span>
+        </small>
+        <div class="form-check form-switch ms-auto">
+            <input class="form-check-input" type="checkbox" id="auto-refresh" checked>
+            <label class="form-check-label" for="auto-refresh">
+                <small>Auto (10s)</small>
+            </label>
+        </div>
+        {% if is_admin %}
+        <button type="button" class="btn btn-sm btn-success"
+                id="btn-discovery-all"
+                onclick="runDiscoveryAll()">
+            <i class="bi bi-arrow-repeat"></i> Discovery Interfaces
+        </button>
+        {% endif %}
+        <button type="button" class="btn btn-sm btn-outline-primary"
+                id="btn-reload"
+                onclick="loadLiveData(true)">
+            <i class="bi bi-arrow-clockwise"></i> Recargar
+        </button>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- Contenedor de tarjetas                                       -->
+<!-- ============================================================ -->
+<div id="devices-container" class="row g-3">
+    <div class="col-12 text-center text-muted py-5">
+        <div class="spinner-border text-primary" role="status"></div>
+        <p class="mt-3">Cargando datos en vivo...</p>
+    </div>
+</div>
+
+<!-- Modal de confirmación Discovery -->
+<div class="modal fade" id="discoveryModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-arrow-repeat"></i> Ejecutar Discovery
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Se ejecutará el descubrimiento de interfaces SNMP en
+                   <strong>todos los equipos activos</strong>.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary"
+                        data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success"
+                        onclick="confirmDiscovery()">
+                    <i class="bi bi-play-fill"></i> Ejecutar ahora
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// ============================================================
+// HELPERS
+// ============================================================
+function formatBps(v) {
+    if (v === null || v === undefined) return '—';
+    if (v >= 1e9) return (v / 1e9).toFixed(2) + ' Gbps';
+    if (v >= 1e6) return (v / 1e6).toFixed(2) + ' Mbps';
+    if (v >= 1e3) return (v / 1e3).toFixed(2) + ' Kbps';
+    return v.toFixed(0) + ' bps';
+}
+
+function formatUptime(seconds) {
+    if (seconds === null || seconds === undefined) return '—';
+    const days = Math.floor(seconds / 86400);
+    const hours = Math.floor((seconds % 86400) / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    if (days > 0) return `${days}d ${hours}h`;
+    if (hours > 0) return `${hours}h ${mins}m`;
+    return `${mins}m`;
+}
+
+function relativeTime(isoTs) {
+    if (!isoTs) return '—';
+    const d = new Date(isoTs);
+    const diff = Math.floor((Date.now() - d.getTime()) / 1000);
+    if (diff < 5) return 'ahora';
+    if (diff < 60) return `hace ${diff}s`;
+    if (diff < 3600) return `hace ${Math.floor(diff / 60)}m`;
+    if (diff < 86400) return `hace ${Math.floor(diff / 3600)}h`;
+    return `hace ${Math.floor(diff / 86400)}d`;
+}
+
+function roleBadge(role) {
+    const classes = {
+        'core': 'bg-danger',
+        'distribution': 'bg-warning text-dark',
+        'access': 'bg-primary',
+        'cpe': 'bg-secondary',
+    };
+    const labels = {
+        'core': 'Core',
+        'distribution': 'Distribución',
+        'access': 'Acceso',
+        'cpe': 'CPE',
+    };
+    return `<span class="badge ${classes[role] || 'bg-secondary'}">
+                ${labels[role] || role}
+            </span>`;
+}
+
+function escapeHtml(s) {
+    if (s === null || s === undefined) return '';
+    return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+// Devuelve clase de color según porcentaje de utilización
+function utilColor(pct) {
+    if (pct === null || pct === undefined) return 'bg-secondary';
+    if (pct > 85) return 'bg-danger';
+    if (pct > 70) return 'bg-warning';
+    if (pct > 40) return 'bg-info';
+    return 'bg-success';
+}
+
+// ============================================================
+// BLOQUE: RADIOENLACE (solo si is_wireless_link)
+// ============================================================
+function renderWirelessBlock(wireless) {
+    if (!wireless) return '';
+
+    const util = wireless.utilization_pct;
+    const cap = wireless.capacity_bps;
+    const utilNum = (util !== null && util !== undefined) ? util : null;
+    const utilPct = utilNum !== null ? utilNum.toFixed(1) : '—';
+    const barColor = utilColor(utilNum);
+    const barWidth = utilNum !== null ? Math.min(utilNum, 100) : 0;
+
+    return `
+        <div class="mb-3 pb-3 border-bottom">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="text-muted small text-uppercase fw-bold">
+                    <i class="bi bi-broadcast-pin text-info"></i> Radioenlace
+                </span>
+                <small class="text-muted">
+                    ${escapeHtml(wireless.interface || '—')}
+                    ${wireless.alias ? '· ' + escapeHtml(wireless.alias) : ''}
+                </small>
+            </div>
+            <div class="row g-2 small mb-2">
+                <div class="col-4">
+                    <div class="text-muted">Capacidad</div>
+                    <div class="fw-bold">${formatBps(cap)}</div>
+                </div>
+                <div class="col-4">
+                    <div class="text-muted">RX</div>
+                    <div class="fw-bold text-success">↓ ${formatBps(wireless.in_bps)}</div>
+                </div>
+                <div class="col-4">
+                    <div class="text-muted">TX</div>
+                    <div class="fw-bold text-warning">↑ ${formatBps(wireless.out_bps)}</div>
+                </div>
+            </div>
+            <div class="d-flex justify-content-between align-items-center mb-1">
+                <small class="text-muted">Utilización</small>
+                <small class="fw-bold">${utilPct}%</small>
+            </div>
+            <div class="progress" style="height: 8px;">
+                <div class="progress-bar ${barColor}"
+                     role="progressbar"
+                     style="width: ${barWidth}%;"></div>
+            </div>
+        </div>
+    `;
+}
+
+// ============================================================
+// BLOQUE: CORE HEALTH (solo si has_health_metrics)
+// ============================================================
+function renderHealthBlock(device) {
+    // Si el equipo no tiene métricas de chasis disponibles → no mostrar
+    if (!device.has_health_metrics) {
+        return '';
+    }
+
+    const health = device.health;
+    const available = device.available_health_metrics || [];
+
+    // Si no hay datos aún, mostrar placeholder
+    if (!health) {
+        return `
+            <div class="mb-3 pb-3 border-bottom">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="text-muted small text-uppercase fw-bold">
+                        <i class="bi bi-heart-pulse"></i> Core Health
+                    </span>
+                </div>
+                <div class="text-muted small fst-italic">Sin datos recientes</div>
+            </div>
+        `;
+    }
+
+    // Construir columnas solo para las métricas disponibles
+    const cells = [];
+
+    if (available.includes('cpu_pct')) {
+        const cpuCls = health.cpu > 90 ? 'text-danger' :
+                       health.cpu > 75 ? 'text-warning' : '';
+        const cpuVal = (health.cpu !== null && health.cpu !== undefined)
+            ? health.cpu.toFixed(0) + '%' : '—';
+        cells.push(`
+            <div class="col">
+                <div class="text-muted">CPU</div>
+                <div class="fw-bold ${cpuCls}">${cpuVal}</div>
+            </div>
+        `);
+    }
+
+    if (available.includes('mem_pct')) {
+        const memCls = health.mem > 92 ? 'text-danger' :
+                       health.mem > 80 ? 'text-warning' : '';
+        const memVal = (health.mem !== null && health.mem !== undefined)
+            ? health.mem.toFixed(0) + '%' : '—';
+        cells.push(`
+            <div class="col">
+                <div class="text-muted">Mem</div>
+                <div class="fw-bold ${memCls}">${memVal}</div>
+            </div>
+        `);
+    }
+
+    if (available.includes('temp_c')) {
+        const tempCls = health.temp > 85 ? 'text-danger' :
+                        health.temp > 70 ? 'text-warning' : '';
+        const tempVal = (health.temp !== null && health.temp !== undefined)
+            ? health.temp.toFixed(0) + '°C' : '—';
+        cells.push(`
+            <div class="col">
+                <div class="text-muted">Temp</div>
+                <div class="fw-bold ${tempCls}">${tempVal}</div>
+            </div>
+        `);
+    }
+
+    return `
+        <div class="mb-3 pb-3 border-bottom">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="text-muted small text-uppercase fw-bold">
+                    <i class="bi bi-heart-pulse"></i> Core Health
+                </span>
+                <small class="text-muted">${relativeTime(health.ts)}</small>
+            </div>
+            <div class="row g-2 small">
+                ${cells.join('')}
+                <div class="col">
+                    <div class="text-muted">Uptime</div>
+                    <div class="fw-bold small">${formatUptime(health.uptime)}</div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// ============================================================
+// BLOQUE: ICMP
+// ============================================================
+function renderIcmpBlock(icmp) {
+    if (!icmp) {
+        return `
+            <div class="mb-3 pb-3 border-bottom">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="text-muted small text-uppercase fw-bold">
+                        <i class="bi bi-activity"></i> ICMP
+                    </span>
+                </div>
+                <div class="text-muted small fst-italic">Sin datos recientes</div>
+            </div>
+        `;
+    }
+
+    const aliveCls = icmp.alive ? 'text-success' : 'text-danger';
+    const aliveIcon = icmp.alive ? 'check-circle-fill' : 'x-circle-fill';
+    const aliveText = icmp.alive ? 'Vivo' : 'Caído';
+    const lossCls = icmp.loss > 5 ? 'text-danger' :
+                    icmp.loss > 0 ? 'text-warning' : '';
+    const rttVal = (icmp.rtt !== null && icmp.rtt !== undefined)
+        ? icmp.rtt.toFixed(1) + ' ms' : '—';
+    const lossVal = (icmp.loss !== null && icmp.loss !== undefined)
+        ? icmp.loss.toFixed(0) + '%' : '—';
+
+    return `
+        <div class="mb-3 pb-3 border-bottom">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="text-muted small text-uppercase fw-bold">
+                    <i class="bi bi-activity"></i> ICMP
+                </span>
+                <small class="text-muted">${relativeTime(icmp.ts)}</small>
+            </div>
+            <div class="row g-2 small">
+                <div class="col-4">
+                    <div class="text-muted">Estado</div>
+                    <div class="${aliveCls} fw-bold">
+                        <i class="bi bi-${aliveIcon}"></i> ${aliveText}
+                    </div>
+                </div>
+                <div class="col-4">
+                    <div class="text-muted">Latencia</div>
+                    <div class="fw-bold">${rttVal}</div>
+                </div>
+                <div class="col-4">
+                    <div class="text-muted">Pérdida</div>
+                    <div class="fw-bold ${lossCls}">${lossVal}</div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// ============================================================
+// BLOQUE: TRÁFICO (tabla por interfaz)
+// ============================================================
+function renderTrafficBlock(device) {
+    const traffic = device.traffic || [];
+
+    if (!device.has_traffic) {
+        return `
+            <div class="mb-3 pb-3 border-bottom">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="text-muted small text-uppercase fw-bold">
+                        <i class="bi bi-graph-up"></i> SNMP Tráfico
+                    </span>
+                </div>
+                <div class="text-muted small fst-italic">
+                    Sin interfaces monitoreadas
+                </div>
+            </div>
+        `;
+    }
+
+    if (traffic.length === 0) {
+        return `
+            <div class="mb-3 pb-3 border-bottom">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="text-muted small text-uppercase fw-bold">
+                        <i class="bi bi-graph-up"></i> SNMP Tráfico
+                    </span>
+                </div>
+                <div class="text-muted small fst-italic">Sin datos recientes</div>
+            </div>
+        `;
+    }
+
+    const rows = traffic.map(t => `
+        <tr>
+            <td><code class="small">${escapeHtml(t.interface || '—')}</code></td>
+            <td class="small text-muted">${escapeHtml(t.alias) || '—'}</td>
+            <td class="text-end text-success small">↓ ${formatBps(t.in_bps)}</td>
+            <td class="text-end text-warning small">↑ ${formatBps(t.out_bps)}</td>
+            <td class="text-end small">
+                ${t.utilization !== null && t.utilization !== undefined
+                    ? t.utilization.toFixed(1) + '%' : '—'}
+            </td>
+        </tr>
+    `).join('');
+
+    return `
+        <div class="mb-3 pb-3 border-bottom">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="text-muted small text-uppercase fw-bold">
+                    <i class="bi bi-graph-up"></i> SNMP Tráfico
+                </span>
+                <small class="text-muted">
+                    ${traffic.length} interfaz${traffic.length !== 1 ? 'es' : ''}
+                </small>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-sm table-borderless mb-0">
+                    <thead>
+                        <tr class="small text-muted">
+                            <th>Interfaz</th>
+                            <th>Alias</th>
+                            <th class="text-end">RX</th>
+                            <th class="text-end">TX</th>
+                            <th class="text-end">Uso</th>
+                        </tr>
+                    </thead>
+                    <tbody>${rows}</tbody>
+                </table>
+            </div>
+        </div>
+    `;
+}
+
+// ============================================================
+// BLOQUE: TCP
+// ============================================================
+function renderTcpBlock(device) {
+    const tcp = device.tcp || [];
+    if (tcp.length === 0) return '';
+
+    const badges = tcp.map(t => {
+        const cls = t.is_open ? 'bg-success' : 'bg-danger';
+        const icon = t.is_open ? 'unlock-fill' : 'lock-fill';
+        return `<span class="badge ${cls} me-1 mb-1">
+                    <i class="bi bi-${icon}"></i> ${t.port}
+                </span>`;
+    }).join('');
+
+    return `
+        <div>
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="text-muted small text-uppercase fw-bold">
+                    <i class="bi bi-hdd-network"></i> TCP
+                </span>
+            </div>
+            <div class="small">${badges}</div>
+        </div>
+    `;
+}
+
+// ============================================================
+// RENDER DE TARJETA POR EQUIPO
+// ============================================================
+function renderDeviceCard(device) {
+    const wirelessBlock = renderWirelessBlock(device.wireless_info);
+    const icmpBlock = renderIcmpBlock(device.icmp);
+    const trafficBlock = renderTrafficBlock(device);
+    const healthBlock = renderHealthBlock(device);
+    const tcpBlock = renderTcpBlock(device);
+
+    // Badge de radioenlace en el header
+    const wirelessBadge = device.is_wireless_link ? `
+        <br><span class="badge bg-info text-dark mt-1"
+                   title="Equipo de radio-enlace">
+            <i class="bi bi-broadcast-pin"></i> Radio
+        </span>
+    ` : '';
+
+    return `
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <div class="flex-grow-1" style="min-width: 0;">
+                        <a href="/equipos/${device.id}/" class="fw-bold text-decoration-none">
+                            ${escapeHtml(device.name)}
+                        </a>
+                        <br>
+                        <small class="text-muted">
+                            <code>${escapeHtml(device.ip)}</code>
+                            · ${escapeHtml(device.vendor) || 'Genérico'}
+                            ${device.model ? '· ' + escapeHtml(device.model) : ''}
+                            ${device.location ? '· ' + escapeHtml(device.location) : ''}
+                        </small>
+                    </div>
+                    <div class="ms-2 text-end">
+                        ${roleBadge(device.role)}
+                        ${wirelessBadge}
+                    </div>
+                </div>
+                <div class="card-body">
+                    ${wirelessBlock}
+                    ${icmpBlock}
+                    ${trafficBlock}
+                    ${healthBlock}
+                    ${tcpBlock}
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// ============================================================
+// CARGA DE DATOS
+// ============================================================
+let refreshTimer = null;
+
+async function loadLiveData(manual = false) {
+    const btn = document.getElementById('btn-reload');
+    if (manual && btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Cargando...';
+    }
+
+    try {
+        const response = await fetch("{% url 'monitoreo:devices_live' %}", {
+            credentials: 'same-origin',  // Enviar cookies de sesión
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+        });
+
+        if (!response.ok) {
+            throw new Error('HTTP ' + response.status);
+        }
+
+        const data = await response.json();
+        const container = document.getElementById('devices-container');
+
+        if (!data.devices || data.devices.length === 0) {
+            container.innerHTML = `
+                <div class="col-12 text-center text-muted py-5">
+                    <i class="bi bi-inbox" style="font-size: 3rem;"></i>
+                    <p class="mt-3">No hay equipos activos para monitorear.</p>
+                </div>
+            `;
+        } else {
+            container.innerHTML = data.devices.map(renderDeviceCard).join('');
+        }
+
+        const ts = new Date(data.timestamp);
+        document.getElementById('last-update').textContent =
+            ts.toLocaleTimeString('es-VE');
+
+        // Log del debug (útil para diagnosticar acceso remoto)
+        if (data._debug) {
+            console.debug('[Live] Snapshot:', data._debug);
+        }
+    } catch (e) {
+        console.error('Error cargando datos en vivo:', e);
+        document.getElementById('last-update').textContent = 'error';
+    } finally {
+        if (manual && btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-arrow-clockwise"></i> Recargar';
+        }
+    }
+}
+
+function startAutoRefresh() {
+    if (refreshTimer) clearInterval(refreshTimer);
+    refreshTimer = setInterval(() => loadLiveData(false), 10000);
+}
+
+function stopAutoRefresh() {
+    if (refreshTimer) {
+        clearInterval(refreshTimer);
+        refreshTimer = null;
+    }
+}
+
+// ============================================================
+// DISCOVERY GLOBAL
+// ============================================================
+function runDiscoveryAll() {
+    const modal = new bootstrap.Modal(document.getElementById('discoveryModal'));
+    modal.show();
+}
+
+async function confirmDiscovery() {
+    const modalEl = document.getElementById('discoveryModal');
+    const modal = bootstrap.Modal.getInstance(modalEl);
+    modal.hide();
+
+    const btn = document.getElementById('btn-discovery-all');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Ejecutando...';
+
+    try {
+        const csrfToken = getCookie('csrftoken');
+        const response = await fetch("{% url 'monitoreo:discover_all' %}", {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+                'X-CSRFToken': csrfToken,
+                'Content-Type': 'application/json',
+            },
+        });
+
+        if (!response.ok) throw new Error('HTTP ' + response.status);
+
+        const data = await response.json();
+
+        let msg = `Discovery completado: ${data.success_count}/${data.total} equipos OK.\n\n`;
+        data.results.forEach(r => {
+            if (r.success) {
+                msg += `✅ ${r.device}: ${r.found} interfaces ` +
+                       `(+${r.created} nuevas, ${r.updated} act., -${r.deleted} elim.) ` +
+                       `[${r.duration_ms}ms]\n`;
+            } else {
+                msg += `❌ ${r.device}: ${r.error}\n`;
+            }
+        });
+        alert(msg);
+        loadLiveData(true);
+    } catch (e) {
+        console.error('Error en Discovery:', e);
+        alert('Error ejecutando Discovery: ' + e.message);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-arrow-repeat"></i> Discovery Interfaces';
+    }
+}
+
+// ============================================================
+// INIT
+// ============================================================
+document.addEventListener('DOMContentLoaded', () => {
+    loadLiveData(false);
+
+    const toggle = document.getElementById('auto-refresh');
+    if (toggle) {
+        toggle.addEventListener('change', () => {
+            if (toggle.checked) startAutoRefresh();
+            else stopAutoRefresh();
+        });
+        if (toggle.checked) startAutoRefresh();
+    }
+});
+</script>
+{% endblock %}

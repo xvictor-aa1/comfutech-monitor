@@ -1,0 +1,378 @@
+{% extends "base.html" %}
+{% block title %}{{ title }} - Comfutech Monitor{% endblock %}
+
+{% block content %}
+
+<!-- Header -->
+<div class="d-flex justify-content-between align-items-start mb-4">
+    <div>
+        <h2 class="mb-1">{{ title }}</h2>
+        <p class="text-muted mb-0 small">
+            {% if is_edit %}
+                Modifica la configuración del equipo. Los cambios se aplican
+                en el próximo ciclo de polling.
+            {% else %}
+                Registra un nuevo equipo para monitorear sus métricas vía SNMP.
+            {% endif %}
+        </p>
+    </div>
+    <div class="btn-group">
+        <a href="{% if is_edit %}{% url 'inventario:device_detail' device.id %}{% else %}{% url 'inventario:device_list' %}{% endif %}"
+           class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Volver
+        </a>
+    </div>
+</div>
+
+{% if form.non_field_errors %}
+<div class="alert alert-danger">
+    {% for err in form.non_field_errors %}<div>{{ err }}</div>{% endfor %}
+</div>
+{% endif %}
+
+<form method="post" id="device-form" novalidate>
+    {% csrf_token %}
+
+    <div class="row g-4">
+
+        <!-- ============================================================ -->
+        <!-- IDENTIFICACIÓN                                                -->
+        <!-- ============================================================ -->
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-tag text-primary"></i> Identificación
+                    </h5>
+                </div>
+                <div class="card-body">
+
+                    <div class="mb-3">
+                        <label class="form-label">
+                            Nombre <span class="text-danger">*</span>
+                        </label>
+                        {{ form.name }}
+                        {% if form.name.errors %}
+                        <div class="text-danger small mt-1">{{ form.name.errors.0 }}</div>
+                        {% endif %}
+                        <div class="form-text">
+                            Un nombre descriptivo. Ej: <em>RB Güigüe</em>, <em>AP-Norte</em>.
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">
+                            Dirección IP <span class="text-danger">*</span>
+                        </label>
+                        {{ form.ip }}
+                        {% if form.ip.errors %}
+                        <div class="text-danger small mt-1">{{ form.ip.errors.0 }}</div>
+                        {% endif %}
+                        <div class="form-text">Dirección IPv4 o IPv6 del equipo.</div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Tipo</label>
+                            {{ form.device_type }}
+                            {% if form.device_type.errors %}
+                            <div class="text-danger small mt-1">{{ form.device_type.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Rol</label>
+                            {{ form.device_role }}
+                            {% if form.device_role.errors %}
+                            <div class="text-danger small mt-1">{{ form.device_role.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Panel de ayuda sobre roles -->
+                    <div class="alert alert-light border small mb-3">
+                        <strong><i class="bi bi-info-circle"></i> ¿Qué significa cada Rol?</strong>
+                        <ul class="mb-0 mt-1 ps-3">
+                            <li>
+                                <strong>Core:</strong> Nodo principal de la red.
+                                Router que conecta con el ISP. Recibe monitoreo
+                                extendido de CPU, memoria y temperatura.
+                            </li>
+                            <li>
+                                <strong>Distribución:</strong> Nodo intermedio
+                                que agrupa y redistribuye el tráfico.
+                                También recibe monitoreo de chasis.
+                            </li>
+                            <li>
+                                <strong>Acceso:</strong> Equipo de acceso a
+                                usuarios finales (switches, APs). Solo tráfico
+                                e ICMP/TCP.
+                            </li>
+                            <li>
+                                <strong>CPE:</strong> Equipo en casa del cliente
+                                (antena, router inalámbrico). Solo se monitorea
+                                disponibilidad (ICMP).
+                            </li>
+                        </ul>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">
+                                Fabricante <span class="text-danger">*</span>
+                            </label>
+                            {{ form.vendor }}
+                            {% if form.vendor.errors %}
+                            <div class="text-danger small mt-1">{{ form.vendor.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">
+                                Modelo <span class="text-danger">*</span>
+                            </label>
+                            {{ form.device_model }}
+                            {% if form.device_model.errors %}
+                            <div class="text-danger small mt-1">{{ form.device_model.errors.0 }}</div>
+                            {% endif %}
+                            <div class="form-text" id="model-help">
+                                Selecciona primero un fabricante.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Ubicación</label>
+                        {{ form.location }}
+                        {% if form.location.errors %}
+                        <div class="text-danger small mt-1">{{ form.location.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="form-check form-switch">
+                        {{ form.active }}
+                        <label class="form-check-label" for="{{ form.active.id_for_label }}">
+                            <strong>Equipo activo</strong>
+                            <span class="text-muted small d-block">
+                                Si está desactivado, no se incluirá en el polling.
+                            </span>
+                        </label>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <!-- ============================================================ -->
+        <!-- CONFIGURACIÓN SNMP                                            -->
+        <!-- ============================================================ -->
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-shield-lock text-danger"></i> Configuración SNMP
+                    </h5>
+                </div>
+                <div class="card-body">
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Versión SNMP</label>
+                            {{ form.snmp_version }}
+                            {% if form.snmp_version.errors %}
+                            <div class="text-danger small mt-1">{{ form.snmp_version.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Community</label>
+                            {{ form.snmp_community }}
+                            {% if form.snmp_community.errors %}
+                            <div class="text-danger small mt-1">{{ form.snmp_community.errors.0 }}</div>
+                            {% endif %}
+                            <div class="form-text">Requerido para SNMPv1/v2c.</div>
+                        </div>
+                    </div>
+
+                    <hr class="my-3">
+                    <p class="text-muted small mb-2">
+                        <i class="bi bi-info-circle"></i>
+                        Los siguientes campos solo son necesarios para <strong>SNMPv3</strong>.
+                    </p>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Usuario SNMPv3</label>
+                            {{ form.snmp_user }}
+                            {% if form.snmp_user.errors %}
+                            <div class="text-danger small mt-1">{{ form.snmp_user.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Auth Key</label>
+                            {{ form.snmp_auth }}
+                            {% if form.snmp_auth.errors %}
+                            <div class="text-danger small mt-1">{{ form.snmp_auth.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Priv Key</label>
+                        {{ form.snmp_priv }}
+                        {% if form.snmp_priv.errors %}
+                        <div class="text-danger small mt-1">{{ form.snmp_priv.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    <hr class="my-3">
+
+                    <div class="mb-3">
+                        <label class="form-label">Puertos TCP a chequear</label>
+                        {{ form.tcp_ports }}
+                        {% if form.tcp_ports.errors %}
+                        <div class="text-danger small mt-1">{{ form.tcp_ports.errors.0 }}</div>
+                        {% endif %}
+                        <div class="form-text">
+                            Separados por coma. Ej: <code>161,22,80</code>
+                        </div>
+                    </div>
+
+                    <!-- Panel de ayuda sobre métricas por rol -->
+                    <div class="alert alert-light border small mb-0">
+                        <strong><i class="bi bi-activity"></i> Métricas por tipo de equipo</strong>
+                        <table class="table table-sm table-borderless mb-0 mt-1">
+                            <thead>
+                                <tr>
+                                    <th></th>
+                                    <th class="text-center">Core</th>
+                                    <th class="text-center">Dist.</th>
+                                    <th class="text-center">Acceso</th>
+                                    <th class="text-center">CPE</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Tráfico SNMP</td>
+                                    <td class="text-center">✓</td>
+                                    <td class="text-center">✓</td>
+                                    <td class="text-center">✓</td>
+                                    <td class="text-center">✓</td>
+                                </tr>
+                                <tr>
+                                    <td>ICMP / TCP</td>
+                                    <td class="text-center">✓</td>
+                                    <td class="text-center">✓</td>
+                                    <td class="text-center">✓</td>
+                                    <td class="text-center">✓</td>
+                                </tr>
+                                <tr>
+                                    <td>CPU / Mem / Temp</td>
+                                    <td class="text-center">✓</td>
+                                    <td class="text-center">✓</td>
+                                    <td class="text-center">—</td>
+                                    <td class="text-center">—</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Barra de acciones -->
+    <div class="d-flex justify-content-between align-items-center mt-4">
+        <a href="{% if is_edit %}{% url 'inventario:device_detail' device.id %}{% else %}{% url 'inventario:device_list' %}{% endif %}"
+           class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Cancelar
+        </a>
+        <div>
+            {% if is_edit %}
+            <a href="{% url 'inventario:device_delete' device.id %}"
+               class="btn btn-outline-danger me-2">
+                <i class="bi bi-trash"></i> Eliminar
+            </a>
+            {% endif %}
+            <button type="submit" class="btn btn-primary btn-lg">
+                <i class="bi bi-save"></i>
+                {% if is_edit %}Guardar cambios{% else %}Crear equipo{% endif %}
+            </button>
+        </div>
+    </div>
+
+</form>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function() {
+    const vendorSelect = document.getElementById("id_vendor");
+    const modelSelect = document.getElementById("id_device_model");
+    const modelHelp = document.getElementById("model-help");
+
+    // Guardar el valor actual del modelo (para cuando se edita)
+    const currentModelId = "{{ form.device_model.value|default:'' }}";
+
+    function loadModels(vendor, preselected) {
+        modelSelect.innerHTML = '<option value="">Cargando modelos...</option>';
+        modelSelect.disabled = true;
+        modelHelp.textContent = "Cargando modelos...";
+
+        fetch("{% url 'inventario:api_models' %}?vendor=" + encodeURIComponent(vendor))
+            .then(r => r.json())
+            .then(data => {
+                modelSelect.innerHTML = '<option value="">— Seleccione un modelo —</option>';
+                modelSelect.disabled = false;
+
+                if (data.models.length === 0) {
+                    modelHelp.innerHTML =
+                        '<span class="text-warning">' +
+                        '<i class="bi bi-exclamation-triangle"></i> ' +
+                        'No hay modelos registrados para este fabricante.</span>';
+                    return;
+                }
+
+                data.models.forEach(m => {
+                    const opt = document.createElement("option");
+                    opt.value = m.id;
+                    opt.textContent = m.name;
+                    if (preselected && String(m.id) === String(preselected)) {
+                        opt.selected = true;
+                    }
+                    modelSelect.appendChild(opt);
+                });
+
+                modelHelp.textContent = data.models.length + " modelo(s) disponible(s).";
+            })
+            .catch(err => {
+                console.error("Error cargando modelos:", err);
+                modelSelect.innerHTML = '<option value="">Error al cargar</option>';
+                modelSelect.disabled = false;
+                modelHelp.innerHTML =
+                    '<span class="text-danger">Error al cargar modelos.</span>';
+            });
+    }
+
+    function onVendorChange() {
+        const vendor = vendorSelect.value;
+        if (!vendor) {
+            modelSelect.innerHTML = '<option value="">— Seleccione primero un fabricante —</option>';
+            modelSelect.disabled = true;
+            modelHelp.textContent = "Selecciona primero un fabricante.";
+            return;
+        }
+        loadModels(vendor, null);
+    }
+
+    vendorSelect.addEventListener("change", onVendorChange);
+
+    // Si ya hay un vendor seleccionado al cargar (edición), cargar los modelos
+    if (vendorSelect.value) {
+        loadModels(vendorSelect.value, currentModelId);
+    } else {
+        modelSelect.disabled = true;
+    }
+})();
+</script>
+{% endblock %}

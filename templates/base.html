@@ -1,0 +1,769 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es" data-bs-theme="auto">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Comfutech Monitor{% endblock %}</title>
+
+    <!-- Aplicar tema ANTES de renderizar (evita flash) -->
+    <script>
+        (function() {
+            try {
+                const stored = localStorage.getItem('cf-theme') || 'auto';
+                let theme = stored;
+                if (theme === 'auto') {
+                    theme = window.matchMedia('(prefers-color-scheme: dark)').matches
+                        ? 'dark' : 'light';
+                }
+                document.documentElement.setAttribute('data-bs-theme', theme);
+            } catch (e) {
+                document.documentElement.setAttribute('data-bs-theme', 'light');
+            }
+        })();
+    </script>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+
+    <!-- Estilos específicos del sidebar -->
+    <style>
+        /* ============================================================
+           SIDEBAR LATERAL STICKY + RESPONSIVE
+           ============================================================ */
+        .cf-sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 100vh;
+            width: 50px;
+            background-color: #05080c;
+            color: #e8eef5;
+            z-index: 1040;
+            transition: width 0.22s ease, box-shadow 0.22s ease;
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid var(--cf-border, #2a3341);
+            overflow-x: hidden;
+        }
+
+        [data-bs-theme="light"] .cf-sidebar {
+            background-color: #0d1117;
+        }
+
+        /* Expandido */
+        .cf-sidebar.expanded {
+            width: 200px;
+            box-shadow: 4px 0 20px rgba(0, 0, 0, 0.25);
+        }
+
+        /* Marca / logo */
+        .cf-sidebar-brand {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 1rem 0.9rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            color: #fff;
+            text-decoration: none;
+            white-space: nowrap;
+            overflow: hidden;
+            min-height: 20px;
+            cursor: pointer;
+        }
+
+        .cf-sidebar-brand i {
+            font-size: 1.45rem;
+            flex-shrink: 0;
+            color: var(--cf-primary, #4d9bff);
+        }
+
+        .cf-sidebar-brand span {
+            font-weight: 600;
+            font-size: 0.92rem;
+            opacity: 0;
+            transition: opacity 0.15s ease;
+        }
+
+        .cf-sidebar.expanded .cf-sidebar-brand span {
+            opacity: 1;
+        }
+
+        /* Nav items */
+        .cf-sidebar-nav {
+            flex-grow: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding: 0.5rem 0;
+            scrollbar-width: thin;
+        }
+
+        .cf-sidebar-nav::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .cf-sidebar-nav::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 4px;
+        }
+
+        .cf-sidebar-item {
+            display: flex;
+            align-items: center;
+            gap: 0.85rem;
+            padding: 0.7rem 0.9rem;
+            color: rgba(255, 255, 255, 0.75);
+            text-decoration: none;
+            font-size: 0.88rem;
+            white-space: nowrap;
+            overflow: hidden;
+            transition: all 0.15s ease;
+            cursor: pointer;
+            border: none;
+            border-left: 3px solid transparent;
+            background: none;
+            width: 100%;
+            text-align: left;
+        }
+
+        .cf-sidebar-item:hover {
+            background-color: rgba(255, 255, 255, 0.06);
+            color: #fff;
+        }
+
+        .cf-sidebar-item.active {
+            background-color: rgba(77, 155, 255, 0.12);
+            color: #fff;
+            border-left-color: var(--cf-primary, #4d9bff);
+        }
+
+        .cf-sidebar-item > i.bi {
+            font-size: 1.15rem;
+            flex-shrink: 0;
+            width: 15px;
+            text-align: center;
+        }
+
+        .cf-sidebar-item .cf-label {
+            opacity: 0;
+            transition: opacity 0.15s ease;
+            flex-grow: 1;
+        }
+
+        .cf-sidebar.expanded .cf-sidebar-item .cf-label {
+            opacity: 1;
+        }
+
+        .cf-sidebar-item .cf-chevron {
+            opacity: 0;
+            transition: opacity 0.15s ease, transform 0.2s ease;
+            font-size: 0.75rem;
+            color: rgba(255, 255, 255, 0.45);
+        }
+
+        .cf-sidebar.expanded .cf-sidebar-item .cf-chevron {
+            opacity: 1;
+        }
+
+        .cf-sidebar-item[aria-expanded="true"] .cf-chevron {
+            transform: rotate(90deg);
+        }
+
+        /* Submenú desplegable */
+        .cf-sidebar-subnav {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            background: rgba(0, 0, 0, 0.25);
+            overflow: hidden;
+        }
+
+        .cf-sidebar-subnav a {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            padding: 0.55rem 0.9rem 0.55rem 3rem;
+            color: rgba(255, 255, 255, 0.65);
+            text-decoration: none;
+            font-size: 0.82rem;
+            white-space: nowrap;
+            transition: background-color 0.15s ease;
+        }
+
+        .cf-sidebar-subnav a:hover {
+            background: rgba(255, 255, 255, 0.06);
+            color: #fff;
+        }
+
+        /* Cuando está colapsado, ocultamos submenús */
+        .cf-sidebar:not(.expanded) .cf-sidebar-subnav {
+            display: none !important;
+        }
+
+        /* Footer del sidebar (usuario + theme) */
+        .cf-sidebar-footer {
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            padding: 0.5rem 0;
+        }
+
+        /* Contenido principal: se desplaza cuando se expande el sidebar */
+        .cf-main-wrapper {
+            margin-left: 50px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            transition: margin-left 0.22s ease;
+        }
+
+        .cf-sidebar.expanded ~ .cf-main-wrapper {
+            margin-left: 200px;
+        }
+
+        /* Navbar superior mínimo: solo para móvil */
+        .cf-topbar-mobile {
+            display: none;
+        }
+
+        /* Overlay para móvil cuando se expande */
+        .cf-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1035;
+        }
+
+        .cf-overlay.show {
+            display: block;
+        }
+
+        /* Responsive: en móviles el sidebar se oculta */
+        @media (max-width: 991.98px) {
+            .cf-sidebar {
+                transform: translateX(-100%);
+                width: 240px;
+            }
+
+            .cf-sidebar.mobile-open {
+                transform: translateX(0);
+            }
+
+            .cf-sidebar.mobile-open .cf-sidebar-brand span,
+            .cf-sidebar.mobile-open .cf-sidebar-item .cf-label,
+            .cf-sidebar.mobile-open .cf-sidebar-item .cf-chevron {
+                opacity: 1;
+            }
+
+            .cf-sidebar.mobile-open .cf-sidebar-subnav {
+                display: block !important;
+            }
+
+            .cf-main-wrapper {
+                margin-left: 0 !important;
+            }
+
+            .cf-topbar-mobile {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                background-color: #0d1117;
+                color: #e8eef5;
+                padding: 0.5rem 1rem;
+                position: sticky;
+                top: 0;
+                z-index: 1030;
+                border-bottom: 1px solid var(--cf-border, #2a3341);
+                min-height: 52px;
+            }
+
+            .cf-topbar-mobile .cf-hamburger {
+                background: transparent;
+                border: none;
+                color: inherit;
+                font-size: 1.4rem;
+                cursor: pointer;
+                padding: 0.25rem;
+            }
+
+            .cf-topbar-mobile .cf-title {
+                font-weight: 600;
+                font-size: 0.95rem;
+            }
+
+            /* En móvil, cuando el sidebar está abierto, overlay visible */
+            body.cf-sidebar-mobile-open .cf-overlay {
+                display: block;
+            }
+        }
+
+        /* Mantener visible el chevron cuando está expandido */
+        .cf-sidebar.expanded .cf-sidebar-item .cf-chevron {
+            opacity: 1;
+        }
+    </style>
+
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+
+<a href="#main-content" class="skip-to-content">Saltar al contenido</a>
+
+<!-- ============================================================
+     OVERLAY para móvil cuando el sidebar está abierto
+     ============================================================ -->
+<div class="cf-overlay" id="cf-overlay"></div>
+
+<!-- ============================================================
+     SIDEBAR LATERAL STICKY COLAPSABLE
+     ============================================================ -->
+<aside class="cf-sidebar" id="cf-sidebar">
+
+    <!-- Brand: clic expande/colapsa -->
+    <a class="cf-sidebar-brand" id="cf-sidebar-brand">
+        <i class="bi bi-router"></i>
+        <span>Comfutech Monitor</span>
+    </a>
+
+    {% if user.is_authenticated %}
+    {% with url_name=request.resolver_match.url_name %}
+    <nav class="cf-sidebar-nav">
+
+        <!-- Dashboard -->
+        <a href="{% url 'core:dashboard' %}"
+           class="cf-sidebar-item {% if url_name == 'dashboard' %}active{% endif %}"
+           title="Dashboard">
+            <i class="bi bi-speedometer2"></i>
+            <span class="cf-label">Dashboard</span>
+        </a>
+
+        <!-- Equipos (con dropdown) -->
+        <button type="button"
+                class="cf-sidebar-item {% if 'device' in url_name %}active{% endif %}"
+                data-bs-toggle="collapse"
+                data-bs-target="#submenu-equipos"
+                aria-expanded="false"
+                title="Equipos">
+            <i class="bi bi-hdd-network"></i>
+            <span class="cf-label">Equipos</span>
+            <i class="bi bi-chevron-right cf-chevron"></i>
+        </button>
+        <div class="collapse cf-sidebar-subnav" id="submenu-equipos">
+            <a href="{% url 'inventario:device_list' %}">
+                <i class="bi bi-list-ul"></i> Ver todos
+            </a>
+            {% if is_admin %}
+            <a href="{% url 'inventario:device_create' %}">
+                <i class="bi bi-plus-lg"></i> Nuevo equipo
+            </a>
+            {% endif %}
+        </div>
+
+        <!-- Alertas -->
+        <a href="{% url 'alertas:alert_list' %}"
+           class="cf-sidebar-item {% if url_name == 'alert_list' %}active{% endif %}"
+           title="Alertas">
+            <i class="bi bi-bell"></i>
+            <span class="cf-label">Alertas</span>
+        </a>
+
+        <!-- Reglas (con dropdown) -->
+        <button type="button"
+                class="cf-sidebar-item {% if 'rule' in url_name %}active{% endif %}"
+                data-bs-toggle="collapse"
+                data-bs-target="#submenu-reglas"
+                aria-expanded="false"
+                title="Reglas">
+            <i class="bi bi-shield-exclamation"></i>
+            <span class="cf-label">Reglas</span>
+            <i class="bi bi-chevron-right cf-chevron"></i>
+        </button>
+        <div class="collapse cf-sidebar-subnav" id="submenu-reglas">
+            <a href="{% url 'alertas:rule_list' %}">
+                <i class="bi bi-list-ul"></i> Ver todas
+            </a>
+            {% if is_admin %}
+            <a href="{% url 'alertas:rule_create' %}">
+                <i class="bi bi-plus-lg"></i> Nueva regla
+            </a>
+            {% endif %}
+        </div>
+
+        <!-- Monitor (con dropdown) -->
+        <button type="button"
+                class="cf-sidebar-item {% if 'monitor' in url_name %}active{% endif %}"
+                data-bs-toggle="collapse"
+                data-bs-target="#submenu-monitor"
+                aria-expanded="false"
+                title="Monitor">
+            <i class="bi bi-cpu"></i>
+            <span class="cf-label">Monitor</span>
+            <i class="bi bi-chevron-right cf-chevron"></i>
+        </button>
+        <div class="collapse cf-sidebar-subnav" id="submenu-monitor">
+            <a href="{% url 'monitoreo:monitor_status' %}">
+                <i class="bi bi-activity"></i> Estado del servicio
+            </a>
+            <a href="{% url 'monitoreo:monitor_live' %}">
+                <i class="bi bi-broadcast"></i> Monitoreo en vivo
+            </a>
+        </div>
+
+        <!-- Grafana (solo si está disponible) -->
+        {% if grafana_available %}
+        <a href="{{ grafana_url }}" target="_blank" rel="noopener"
+           class="cf-sidebar-item" title="Abrir Grafana">
+            <i class="bi bi-graph-up"></i>
+            <span class="cf-label">Grafana</span>
+            <i class="bi bi-box-arrow-up-right cf-chevron"></i>
+        </a>
+        {% endif %}
+
+    </nav>
+
+    <!-- Footer del sidebar: usuario + theme switcher -->
+    <div class="cf-sidebar-footer">
+
+        <!-- Usuario (dropdown) -->
+        <div class="dropdown w-100">
+            <button type="button"
+                    class="cf-sidebar-item dropdown-toggle"
+                    data-bs-toggle="dropdown"
+                    aria-expanded="false"
+                    title="Usuario: {{ user.username }}">
+                <i class="bi bi-person-circle"></i>
+                <span class="cf-label">{{ user.username }}</span>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end" style="min-width: 200px;">
+                <li>
+                    <a class="dropdown-item" href="{% url 'core:profile' %}">
+                        <i class="bi bi-person"></i> Mi perfil
+                    </a>
+                </li>
+                <li>
+                    <a class="dropdown-item"
+                       href="{% url 'core:user_change_password' user.id %}">
+                        <i class="bi bi-key"></i> Cambiar contraseña
+                    </a>
+                </li>
+                {% if is_admin %}
+                <li><hr class="dropdown-divider"></li>
+                <li>
+                    <a class="dropdown-item" href="{% url 'core:user_list' %}">
+                        <i class="bi bi-people"></i> Usuarios
+                    </a>
+                </li>
+                {% endif %}
+                {% if is_superadmin %}
+                <li>
+                    <a class="dropdown-item" href="{% url 'core:system_settings' %}">
+                        <i class="bi bi-sliders"></i> Configuración
+                    </a>
+                </li>
+                {% endif %}
+                <li><hr class="dropdown-divider"></li>
+                <li>
+                    <form method="post" action="{% url 'logout' %}">
+                        {% csrf_token %}
+                        <button type="submit" class="dropdown-item">
+                            <i class="bi bi-box-arrow-right"></i> Cerrar sesión
+                        </button>
+                    </form>
+                </li>
+            </ul>
+        </div>
+
+        <!-- Theme switcher (dropdown) -->
+        <div class="dropdown w-100">
+            <button type="button"
+                    class="cf-sidebar-item dropdown-toggle"
+                    data-bs-toggle="dropdown"
+                    aria-expanded="false"
+                    title="Cambiar tema">
+                <i class="bi bi-circle-half" id="theme-icon"></i>
+                <span class="cf-label" id="theme-label">Tema</span>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end" style="min-width: 200px;">
+                <li>
+                    <button type="button" class="dropdown-item"
+                            data-theme="light" onclick="setTheme('light')">
+                        <i class="bi bi-sun-fill"></i> Modo Claro
+                        <i class="bi bi-check2 ms-auto"></i>
+                    </button>
+                </li>
+                <li>
+                    <button type="button" class="dropdown-item"
+                            data-theme="dark" onclick="setTheme('dark')">
+                        <i class="bi bi-moon-stars-fill"></i> Modo Oscuro
+                        <i class="bi bi-check2 ms-auto"></i>
+                    </button>
+                </li>
+                <li>
+                    <button type="button" class="dropdown-item"
+                            data-theme="auto" onclick="setTheme('auto')">
+                        <i class="bi bi-circle-half"></i> Automático
+                        <i class="bi bi-check2 ms-auto"></i>
+                    </button>
+                </li>
+            </ul>
+        </div>
+
+    </div>
+    {% endwith %}
+    {% endif %}
+
+</aside>
+
+<!-- ============================================================
+     WRAPPER DEL CONTENIDO
+     ============================================================ -->
+<div class="cf-main-wrapper">
+
+    <!-- Topbar solo en móvil -->
+    <div class="cf-topbar-mobile">
+        <button type="button" class="cf-hamburger" id="cf-hamburger">
+            <i class="bi bi-list"></i>
+        </button>
+        <span class="cf-title">
+            <i class="bi bi-router"></i> Comfutech Monitor
+        </span>
+        <span style="width: 32px;"></span>
+    </div>
+
+    <main class="container-fluid py-4" id="main-content">
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show"
+                     role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close"
+                            data-bs-dismiss="alert" aria-label="Cerrar"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="text-center text-muted py-2 stycky border-top">
+        <small>
+            Comfutech - Sistema de Monitoreo de Red &copy; {% now "Y" %}
+            · Güigüe, Carabobo
+        </small>
+    </footer>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+// ============================================================
+// THEME SWITCHER
+// ============================================================
+function applyTheme(theme) {
+    let effective = theme;
+    if (theme === 'auto') {
+        effective = window.matchMedia('(prefers-color-scheme: dark)').matches
+            ? 'dark' : 'light';
+    }
+    document.documentElement.setAttribute('data-bs-theme', effective);
+
+    const icon = document.getElementById('theme-icon');
+    const label = document.getElementById('theme-label');
+    if (icon) {
+        icon.className = 'bi';
+        if (theme === 'light') icon.classList.add('bi-sun-fill');
+        else if (theme === 'dark') icon.classList.add('bi-moon-stars-fill');
+        else icon.classList.add('bi-circle-half');
+    }
+    if (label) {
+        label.textContent = {
+            'light': 'Claro',
+            'dark': 'Oscuro',
+            'auto': 'Automático',
+        }[theme] || 'Tema';
+    }
+
+    // Marcar la opción activa en el dropdown
+    document.querySelectorAll('.dropdown-item[data-theme]').forEach(btn => {
+        const check = btn.querySelector('.bi-check2');
+        if (!check) return;
+        check.style.display = (btn.dataset.theme === theme) ? 'inline-block' : 'none';
+    });
+}
+
+function setTheme(theme) {
+    try { localStorage.setItem('cf-theme', theme); } catch (e) {}
+    applyTheme(theme);
+}
+
+// Escuchar cambios del SO cuando está en modo auto
+if (window.matchMedia) {
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+        const stored = localStorage.getItem('cf-theme') || 'auto';
+        if (stored === 'auto') applyTheme('auto');
+    });
+}
+
+// Aplicar al cargar
+document.addEventListener('DOMContentLoaded', () => {
+    let stored = 'auto';
+    try { stored = localStorage.getItem('cf-theme') || 'auto'; } catch (e) {}
+    applyTheme(stored);
+});
+
+// ============================================================
+// SIDEBAR: EXPANDIR / COLAPSAR
+// ============================================================
+(function() {
+    const sidebar = document.getElementById('cf-sidebar');
+    const brand = document.getElementById('cf-sidebar-brand');
+    const overlay = document.getElementById('cf-overlay');
+    const hamburger = document.getElementById('cf-hamburger');
+    if (!sidebar) return;
+
+    const isMobile = () => window.matchMedia('(max-width: 991.98px)').matches;
+
+    // --- Expandir / colapsar al hacer clic en la marca ---
+    brand.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (isMobile()) {
+            sidebar.classList.toggle('mobile-open');
+            document.body.classList.toggle('cf-sidebar-mobile-open');
+            overlay.classList.toggle('show');
+        } else {
+            sidebar.classList.toggle('expanded');
+            try {
+                localStorage.setItem(
+                    'cf-sidebar-expanded',
+                    sidebar.classList.contains('expanded') ? '1' : '0'
+                );
+            } catch (e) {}
+        }
+    });
+
+    // --- Expandir al pulsar cualquier item (excepto theme switcher y dropdowns) ---
+    document.querySelectorAll('.cf-sidebar-item').forEach(item => {
+        item.addEventListener('click', (e) => {
+            // Ignorar items que sean dropdowns del theme
+            if (item.classList.contains('dropdown-toggle') &&
+                item.closest('.cf-sidebar-footer') &&
+                item.querySelector('#theme-icon')) {
+                return;
+            }
+            // Si está colapsado y no es móvil, expandir
+            if (!isMobile() && !sidebar.classList.contains('expanded')) {
+                sidebar.classList.add('expanded');
+                try { localStorage.setItem('cf-sidebar-expanded', '1'); } catch (e) {}
+            }
+        });
+    });
+
+    // --- Recuperar estado expandido en desktop ---
+    if (!isMobile()) {
+        try {
+            if (localStorage.getItem('cf-sidebar-expanded') === '1') {
+                sidebar.classList.add('expanded');
+            }
+        } catch (e) {}
+    }
+
+    // --- Botón hamburguesa (móvil) ---
+    if (hamburger) {
+        hamburger.addEventListener('click', () => {
+            sidebar.classList.toggle('mobile-open');
+            document.body.classList.toggle('cf-sidebar-mobile-open');
+            overlay.classList.toggle('show');
+        });
+    }
+
+    // --- Overlay cierra el sidebar en móvil ---
+    if (overlay) {
+        overlay.addEventListener('click', () => {
+            sidebar.classList.remove('mobile-open');
+            document.body.classList.remove('cf-sidebar-mobile-open');
+            overlay.classList.remove('show');
+        });
+    }
+
+    // --- Cerrar sidebar al hacer clic en un enlace real (móvil) ---
+    sidebar.querySelectorAll('a[href]:not([href="#"])').forEach(link => {
+        link.addEventListener('click', () => {
+            if (isMobile()) {
+                sidebar.classList.remove('mobile-open');
+                document.body.classList.remove('cf-sidebar-mobile-open');
+                overlay.classList.remove('show');
+            }
+        });
+    });
+
+    // --- Ajustar márgenes cuando cambia el tamaño ---
+    const handleResize = () => {
+        if (!isMobile()) {
+            // Al pasar a desktop, cerrar modos móviles
+            sidebar.classList.remove('mobile-open');
+            document.body.classList.remove('cf-sidebar-mobile-open');
+            overlay.classList.remove('show');
+            // Restaurar estado expandido guardado
+            try {
+                if (localStorage.getItem('cf-sidebar-expanded') === '1') {
+                    sidebar.classList.add('expanded');
+                }
+            } catch (e) {}
+        }
+    };
+    window.addEventListener('resize', handleResize);
+})();
+
+// ============================================================
+// HELPERS GLOBALES
+// ============================================================
+function togglePassword(inputId, btn) {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    const icon = btn ? btn.querySelector('i') : null;
+    if (input.type === 'password') {
+        input.type = 'text';
+        if (icon) {
+            icon.classList.remove('bi-eye');
+            icon.classList.add('bi-eye-slash');
+        }
+    } else {
+        input.type = 'password';
+        if (icon) {
+            icon.classList.remove('bi-eye-slash');
+            icon.classList.add('bi-eye');
+        }
+    }
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// Auto-cerrar alerts después de 6 segundos
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.alert.alert-dismissible').forEach(el => {
+        setTimeout(() => {
+            try {
+                const bsAlert = bootstrap.Alert.getOrCreateInstance(el);
+                bsAlert.close();
+            } catch (e) {}
+        }, 6000);
+    });
+});
+</script>
+
+{% block extra_js %}{% endblock %}
+</body>
+</html>

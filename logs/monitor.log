@@ -1,0 +1,644 @@
+WARNING 2026-10-15 18:52:48 monitoreo.scheduler [10376] Modo silencioso ACTIVADO (solo WARNING+).
+WARNING 2026-10-15 19:26:16 monitoreo.scheduler [2940] Modo silencioso ACTIVADO (solo WARNING+).
+INFO 2026-10-15 19:27:17 monitoreo.services.discovery [9624] Discovery OK: RB Güigüe (10.253.215.3) — 20 interfaces (14 up), 20 nuevas, 0 actualizadas, 0 eliminadas
+WARNING 2026-10-15 20:03:22 monitoreo.services.icmp_tcp [2940] [RB Güigüe] 10.253.215.3 sin respuesta ICMP
+WARNING 2026-10-15 20:16:27 monitoreo.services.icmp_tcp [2940] [RB Güigüe] 10.253.215.3 sin respuesta ICMP
+WARNING 2026-10-15 20:17:21 monitoreo.services.icmp_tcp [2940] [RB Güigüe] 10.253.215.3 sin respuesta ICMP
+ERROR 2026-10-17 11:00:46 monitoreo.management.commands.run_monitor [12644] Error en Discovery inicial
+Traceback (most recent call last):
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\db\backends\base\base.py", line 279, in ensure_connection
+    self.connect()
+    ~~~~~~~~~~~~^^
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\utils\asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\db\backends\base\base.py", line 256, in connect
+    self.connection = self.get_new_connection(conn_params)
+                      ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\utils\asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\db\backends\mysql\base.py", line 258, in get_new_connection
+    connection = Database.connect(**conn_params)
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\MySQLdb\__init__.py", line 122, in Connect
+    return Connection(*args, **kwargs)
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\MySQLdb\connections.py", line 218, in __init__
+    super().__init__(*args, **kwargs2)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+MySQLdb.OperationalError: (1045, "Access denied for user 'root'@'172.14.4.1' (using password: YES)")
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\comfutech-monitor\monitoreo\management\commands\run_monitor.py", line 125, in _run_initial_discovery
+    total = devices.count()
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\db\models\query.py", line 610, in count
+    return self.query.get_count(using=self.db)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\db\models\sql\query.py", line 656, in get_count
+    return obj.get_aggregation(using, {"__count": Count("*")})["__count"]
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\db\models\sql\query.py", line 638, in get_aggregation
+    result = compiler.execute_sql(SINGLE)
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\db\models\sql\compiler.py", line 1622, in execute_sql
+    cursor = self.connection.cursor()
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\utils\asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\db\backends\base\base.py", line 320, in cursor
+    return self._cursor()
+           ~~~~~~~~~~~~^^
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\db\backends\base\base.py", line 296, in _cursor
+    self.ensure_connection()
+    ~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\utils\asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\db\backends\base\base.py", line 278, in ensure_connection
+    with self.wrap_database_errors:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\db\utils.py", line 94, in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\db\backends\base\base.py", line 279, in ensure_connection
+    self.connect()
+    ~~~~~~~~~~~~^^
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\utils\asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\db\backends\base\base.py", line 256, in connect
+    self.connection = self.get_new_connection(conn_params)
+                      ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\utils\asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\db\backends\mysql\base.py", line 258, in get_new_connection
+    connection = Database.connect(**conn_params)
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\MySQLdb\__init__.py", line 122, in Connect
+    return Connection(*args, **kwargs)
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\MySQLdb\connections.py", line 218, in __init__
+    super().__init__(*args, **kwargs2)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+django.db.utils.OperationalError: (1045, "Access denied for user 'root'@'172.14.4.1' (using password: YES)")
+INFO 2026-10-17 11:00:46 monitoreo.services.alerts [12644] Warm-up del monitor reiniciado (120s).
+ERROR 2026-10-17 11:01:16 monitoreo.management.commands.run_monitor [10732] Error en Discovery inicial
+Traceback (most recent call last):
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\db\backends\base\base.py", line 279, in ensure_connection
+    self.connect()
+    ~~~~~~~~~~~~^^
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\utils\asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\db\backends\base\base.py", line 256, in connect
+    self.connection = self.get_new_connection(conn_params)
+                      ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\utils\asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\db\backends\mysql\base.py", line 258, in get_new_connection
+    connection = Database.connect(**conn_params)
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\MySQLdb\__init__.py", line 122, in Connect
+    return Connection(*args, **kwargs)
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\MySQLdb\connections.py", line 218, in __init__
+    super().__init__(*args, **kwargs2)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+MySQLdb.OperationalError: (1045, "Access denied for user 'root'@'172.14.4.1' (using password: YES)")
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\comfutech-monitor\monitoreo\management\commands\run_monitor.py", line 125, in _run_initial_discovery
+    total = devices.count()
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\db\models\query.py", line 610, in count
+    return self.query.get_count(using=self.db)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\db\models\sql\query.py", line 656, in get_count
+    return obj.get_aggregation(using, {"__count": Count("*")})["__count"]
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\db\models\sql\query.py", line 638, in get_aggregation
+    result = compiler.execute_sql(SINGLE)
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\db\models\sql\compiler.py", line 1622, in execute_sql
+    cursor = self.connection.cursor()
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\utils\asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\db\backends\base\base.py", line 320, in cursor
+    return self._cursor()
+           ~~~~~~~~~~~~^^
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\db\backends\base\base.py", line 296, in _cursor
+    self.ensure_connection()
+    ~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\utils\asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\db\backends\base\base.py", line 278, in ensure_connection
+    with self.wrap_database_errors:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\db\utils.py", line 94, in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\db\backends\base\base.py", line 279, in ensure_connection
+    self.connect()
+    ~~~~~~~~~~~~^^
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\utils\asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\db\backends\base\base.py", line 256, in connect
+    self.connection = self.get_new_connection(conn_params)
+                      ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\utils\asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\db\backends\mysql\base.py", line 258, in get_new_connection
+    connection = Database.connect(**conn_params)
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\MySQLdb\__init__.py", line 122, in Connect
+    return Connection(*args, **kwargs)
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\MySQLdb\connections.py", line 218, in __init__
+    super().__init__(*args, **kwargs2)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+django.db.utils.OperationalError: (1045, "Access denied for user 'root'@'172.14.4.1' (using password: YES)")
+INFO 2026-10-17 11:01:16 monitoreo.services.alerts [10732] Warm-up del monitor reiniciado (120s).
+ERROR 2026-10-17 11:01:36 monitoreo.management.commands.run_monitor [5376] Error en Discovery inicial
+Traceback (most recent call last):
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\db\backends\base\base.py", line 279, in ensure_connection
+    self.connect()
+    ~~~~~~~~~~~~^^
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\utils\asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\db\backends\base\base.py", line 256, in connect
+    self.connection = self.get_new_connection(conn_params)
+                      ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\utils\asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\db\backends\mysql\base.py", line 258, in get_new_connection
+    connection = Database.connect(**conn_params)
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\MySQLdb\__init__.py", line 122, in Connect
+    return Connection(*args, **kwargs)
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\MySQLdb\connections.py", line 218, in __init__
+    super().__init__(*args, **kwargs2)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+MySQLdb.OperationalError: (1045, "Access denied for user 'root'@'172.14.4.1' (using password: YES)")
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\comfutech-monitor\monitoreo\management\commands\run_monitor.py", line 125, in _run_initial_discovery
+    total = devices.count()
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\db\models\query.py", line 610, in count
+    return self.query.get_count(using=self.db)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\db\models\sql\query.py", line 656, in get_count
+    return obj.get_aggregation(using, {"__count": Count("*")})["__count"]
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\db\models\sql\query.py", line 638, in get_aggregation
+    result = compiler.execute_sql(SINGLE)
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\db\models\sql\compiler.py", line 1622, in execute_sql
+    cursor = self.connection.cursor()
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\utils\asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\db\backends\base\base.py", line 320, in cursor
+    return self._cursor()
+           ~~~~~~~~~~~~^^
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\db\backends\base\base.py", line 296, in _cursor
+    self.ensure_connection()
+    ~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\utils\asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\db\backends\base\base.py", line 278, in ensure_connection
+    with self.wrap_database_errors:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\db\utils.py", line 94, in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\db\backends\base\base.py", line 279, in ensure_connection
+    self.connect()
+    ~~~~~~~~~~~~^^
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\utils\asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\db\backends\base\base.py", line 256, in connect
+    self.connection = self.get_new_connection(conn_params)
+                      ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\utils\asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\db\backends\mysql\base.py", line 258, in get_new_connection
+    connection = Database.connect(**conn_params)
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\MySQLdb\__init__.py", line 122, in Connect
+    return Connection(*args, **kwargs)
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\MySQLdb\connections.py", line 218, in __init__
+    super().__init__(*args, **kwargs2)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+django.db.utils.OperationalError: (1045, "Access denied for user 'root'@'172.14.4.1' (using password: YES)")
+INFO 2026-10-17 11:01:37 monitoreo.services.alerts [5376] Warm-up del monitor reiniciado (120s).
+ERROR 2026-10-17 11:01:58 monitoreo.management.commands.run_monitor [11348] Error en Discovery inicial
+Traceback (most recent call last):
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\db\backends\base\base.py", line 279, in ensure_connection
+    self.connect()
+    ~~~~~~~~~~~~^^
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\utils\asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\db\backends\base\base.py", line 256, in connect
+    self.connection = self.get_new_connection(conn_params)
+                      ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\utils\asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\db\backends\mysql\base.py", line 258, in get_new_connection
+    connection = Database.connect(**conn_params)
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\MySQLdb\__init__.py", line 122, in Connect
+    return Connection(*args, **kwargs)
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\MySQLdb\connections.py", line 218, in __init__
+    super().__init__(*args, **kwargs2)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+MySQLdb.OperationalError: (1045, "Access denied for user 'root'@'172.14.4.1' (using password: YES)")
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\comfutech-monitor\monitoreo\management\commands\run_monitor.py", line 125, in _run_initial_discovery
+    total = devices.count()
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\db\models\query.py", line 610, in count
+    return self.query.get_count(using=self.db)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\db\models\sql\query.py", line 656, in get_count
+    return obj.get_aggregation(using, {"__count": Count("*")})["__count"]
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\db\models\sql\query.py", line 638, in get_aggregation
+    result = compiler.execute_sql(SINGLE)
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\db\models\sql\compiler.py", line 1622, in execute_sql
+    cursor = self.connection.cursor()
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\utils\asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\db\backends\base\base.py", line 320, in cursor
+    return self._cursor()
+           ~~~~~~~~~~~~^^
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\db\backends\base\base.py", line 296, in _cursor
+    self.ensure_connection()
+    ~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\utils\asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\db\backends\base\base.py", line 278, in ensure_connection
+    with self.wrap_database_errors:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\db\utils.py", line 94, in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\db\backends\base\base.py", line 279, in ensure_connection
+    self.connect()
+    ~~~~~~~~~~~~^^
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\utils\asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\db\backends\base\base.py", line 256, in connect
+    self.connection = self.get_new_connection(conn_params)
+                      ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\utils\asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\db\backends\mysql\base.py", line 258, in get_new_connection
+    connection = Database.connect(**conn_params)
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\MySQLdb\__init__.py", line 122, in Connect
+    return Connection(*args, **kwargs)
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\MySQLdb\connections.py", line 218, in __init__
+    super().__init__(*args, **kwargs2)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+django.db.utils.OperationalError: (1045, "Access denied for user 'root'@'172.14.4.1' (using password: YES)")
+INFO 2026-10-17 11:01:58 monitoreo.services.alerts [11348] Warm-up del monitor reiniciado (120s).
+ERROR 2026-10-17 11:21:13 monitoreo.management.commands.run_monitor [1116] Error en Discovery inicial
+Traceback (most recent call last):
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\db\backends\base\base.py", line 279, in ensure_connection
+    self.connect()
+    ~~~~~~~~~~~~^^
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\utils\asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\db\backends\base\base.py", line 256, in connect
+    self.connection = self.get_new_connection(conn_params)
+                      ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\utils\asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\db\backends\mysql\base.py", line 258, in get_new_connection
+    connection = Database.connect(**conn_params)
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\MySQLdb\__init__.py", line 122, in Connect
+    return Connection(*args, **kwargs)
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\MySQLdb\connections.py", line 218, in __init__
+    super().__init__(*args, **kwargs2)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+MySQLdb.OperationalError: (1045, "Access denied for user 'victor'@'172.14.4.1' (using password: YES)")
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\comfutech-monitor\monitoreo\management\commands\run_monitor.py", line 125, in _run_initial_discovery
+    total = devices.count()
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\db\models\query.py", line 610, in count
+    return self.query.get_count(using=self.db)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\db\models\sql\query.py", line 656, in get_count
+    return obj.get_aggregation(using, {"__count": Count("*")})["__count"]
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\db\models\sql\query.py", line 638, in get_aggregation
+    result = compiler.execute_sql(SINGLE)
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\db\models\sql\compiler.py", line 1622, in execute_sql
+    cursor = self.connection.cursor()
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\utils\asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\db\backends\base\base.py", line 320, in cursor
+    return self._cursor()
+           ~~~~~~~~~~~~^^
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\db\backends\base\base.py", line 296, in _cursor
+    self.ensure_connection()
+    ~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\utils\asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\db\backends\base\base.py", line 278, in ensure_connection
+    with self.wrap_database_errors:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\db\utils.py", line 94, in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\db\backends\base\base.py", line 279, in ensure_connection
+    self.connect()
+    ~~~~~~~~~~~~^^
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\utils\asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\db\backends\base\base.py", line 256, in connect
+    self.connection = self.get_new_connection(conn_params)
+                      ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\utils\asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\db\backends\mysql\base.py", line 258, in get_new_connection
+    connection = Database.connect(**conn_params)
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\MySQLdb\__init__.py", line 122, in Connect
+    return Connection(*args, **kwargs)
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\MySQLdb\connections.py", line 218, in __init__
+    super().__init__(*args, **kwargs2)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+django.db.utils.OperationalError: (1045, "Access denied for user 'victor'@'172.14.4.1' (using password: YES)")
+INFO 2026-10-17 11:21:18 monitoreo.services.alerts [1116] Warm-up del monitor reiniciado (120s).
+INFO 2026-10-17 11:25:16 monitoreo.services.discovery [4520] Discovery OK: RB Güigüe (10.253.215.3) — 20 interfaces (14 up), 0 nuevas, 20 actualizadas, 0 eliminadas
+INFO 2026-10-17 11:25:16 monitoreo.services.alerts [4520] Warm-up del monitor reiniciado (120s).
+INFO 2026-10-17 11:25:16 monitoreo.scheduler [4520] Scheduler iniciado: traffic=60s, health=120s, icmp=60s, enabled=True.
+INFO 2026-10-17 11:25:24 monitoreo.services.traffic [4520] RB Güigüe if1 [core]: cap=1000 Mbps in=0.00 out=0.00 util=N/A%
+INFO 2026-10-17 11:25:33 monitoreo.services.health [4520] [RB Güigüe] 10.253.215.3 [core] - CPU=13.8% MEM=15.7% TEMP=54.0°C UPTIME=17.0 h
+INFO 2026-10-17 11:25:33 monitoreo.scheduler [4520] Health poll OK: {'devices': 1, 'errors': 0, 'alerts': 0, 'duration_s': 16.38}
+INFO 2026-10-17 11:25:33 monitoreo.services.traffic [4520] RB Güigüe if2 [core]: cap=100 Mbps in=0.00 out=0.00 util=N/A%
+INFO 2026-10-17 11:25:41 monitoreo.services.traffic [4520] RB Güigüe if3 [core]: cap=100 Mbps in=0.00 out=0.00 util=N/A%
+INFO 2026-10-17 11:25:46 monitoreo.services.traffic [4520] RB Güigüe if4 [core]: cap=100 Mbps in=0.00 out=0.00 util=N/A%
+INFO 2026-10-17 11:25:49 monitoreo.services.icmp_tcp [4520] [RB Güigüe] 10.253.215.3 - alive=True rtt=393.0ms loss=0% tcp=[80]
+INFO 2026-10-17 11:25:49 monitoreo.scheduler [4520] ICMP/TCP poll OK: {'devices': 1, 'alive': 1, 'down': 0, 'errors': 0, 'duration_s': 33.13}
+INFO 2026-10-17 11:26:00 monitoreo.services.traffic [4520] RB Güigüe if5 [core]: cap=1000 Mbps in=0.00 out=0.00 util=N/A%
+INFO 2026-10-17 11:26:00 monitoreo.scheduler [4520] Traffic poll OK: {'devices': 1, 'interfaces': 0, 'alerts': 0, 'errors': 0, 'duration_s': 43.42}
+WARNING 2026-10-17 11:26:25 monitoreo.services.icmp_tcp [4520] [RB Güigüe] 10.253.215.3 sin respuesta ICMP
+INFO 2026-10-17 11:26:25 monitoreo.scheduler [4520] ICMP/TCP poll OK: {'devices': 1, 'alive': 0, 'down': 1, 'errors': 0, 'duration_s': 8.99}
+WARNING 2026-10-17 11:26:33 monitoreo.services.traffic [4520] RB Güigüe if1: utilización absurda (246165790673.9%) — verifica if_speed_bps.
+INFO 2026-10-17 11:26:38 monitoreo.services.traffic [4520] RB Güigüe if1 [core]: cap=1000 Mbps in=2461657850654.55 out=2461657906739.16 util=N/A%
+INFO 2026-10-17 11:26:48 monitoreo.services.traffic [4520] RB Güigüe if2 [core]: cap=100 Mbps in=0.25 out=6.38 util=6.4%
+INFO 2026-10-17 11:27:00 monitoreo.services.traffic [4520] RB Güigüe if3 [core]: cap=100 Mbps in=4.07 out=40.47 util=40.5%
+INFO 2026-10-17 11:27:06 monitoreo.services.traffic [4520] RB Güigüe if4 [core]: cap=100 Mbps in=0.63 out=12.16 util=12.2%
+WARNING 2026-10-17 11:27:10 monitoreo.services.traffic [4520] RB Güigüe if5: utilización absurda (2181.0%) — verifica if_speed_bps.
+INFO 2026-10-17 11:27:11 monitoreo.services.traffic [4520] RB Güigüe if5 [core]: cap=1000 Mbps in=2295.85 out=21809.70 util=N/A%
+INFO 2026-10-17 11:27:12 monitoreo.scheduler [4520] Traffic poll OK: {'devices': 1, 'interfaces': 5, 'alerts': 0, 'errors': 0, 'duration_s': 55.21}
+WARNING 2026-10-17 11:27:19 monitoreo.services.icmp_tcp [4520] [RB Güigüe] 10.253.215.3 sin respuesta ICMP
+INFO 2026-10-17 11:27:19 monitoreo.scheduler [4520] ICMP/TCP poll OK: {'devices': 1, 'alive': 0, 'down': 1, 'errors': 0, 'duration_s': 2.85}
+WARNING 2026-10-17 11:27:22 monitoreo.services.traffic [4520] RB Güigüe if1: utilización absurda (6590.4%) — verifica if_speed_bps.
+INFO 2026-10-17 11:27:22 monitoreo.services.traffic [4520] RB Güigüe if1 [core]: cap=1000 Mbps in=65903.50 out=9738.53 util=N/A%
+INFO 2026-10-17 11:27:31 monitoreo.services.traffic [4520] RB Güigüe if2 [core]: cap=100 Mbps in=0.25 out=7.01 util=7.0%
+INFO 2026-10-17 11:27:35 monitoreo.services.health [4520] [RB Güigüe] 10.253.215.3 [core] - CPU=13.2% MEM=15.7% TEMP=54.0°C UPTIME=17.0 h
+INFO 2026-10-17 11:27:35 monitoreo.scheduler [4520] Health poll OK: {'devices': 1, 'errors': 0, 'alerts': 0, 'duration_s': 19.14}
+INFO 2026-10-17 11:27:42 monitoreo.services.traffic [4520] RB Güigüe if3 [core]: cap=100 Mbps in=1.48 out=22.06 util=22.1%
+INFO 2026-10-17 11:27:52 monitoreo.services.traffic [4520] RB Güigüe if4 [core]: cap=100 Mbps in=0.49 out=10.14 util=10.1%
+WARNING 2026-10-17 11:28:06 monitoreo.services.traffic [4520] RB Güigüe if5: utilización absurda (245912405158.5%) — verifica if_speed_bps.
+INFO 2026-10-17 11:28:11 monitoreo.services.traffic [4520] RB Güigüe if5 [core]: cap=1000 Mbps in=2459124051585.09 out=2459124032137.48 util=N/A%
+INFO 2026-10-17 11:28:11 monitoreo.scheduler [4520] Traffic poll OK: {'devices': 1, 'interfaces': 5, 'alerts': 0, 'errors': 0, 'duration_s': 54.46}
+INFO 2026-10-17 11:28:22 monitoreo.services.traffic [4520] RB Güigüe if1 [core]: cap=1000 Mbps in=77.95 out=7.94 util=7.8%
+INFO 2026-10-17 11:28:23 monitoreo.scheduler [4520] Scheduler detenido.
+INFO 2026-10-17 11:28:29 monitoreo.services.traffic [4520] RB Güigüe if2 [core]: cap=100 Mbps in=3.01 out=13.43 util=13.4%
+ERROR 2026-10-17 11:28:29 monitoreo.services.traffic [4520] Error procesando RB Güigüe if3: cannot schedule new futures after interpreter shutdown
+Traceback (most recent call last):
+  File "C:\comfutech-monitor\monitoreo\services\snmp_client.py", line 76, in snmp_get_multiple
+    return asyncio.run(_snmp_get_async(device, oids))
+           ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\asyncio\runners.py", line 195, in run
+    return runner.run(main)
+           ~~~~~~~~~~^^^^^^
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\asyncio\base_events.py", line 719, in run_until_complete
+    return future.result()
+           ~~~~~~~~~~~~~^^
+  File "C:\comfutech-monitor\monitoreo\services\snmp_client.py", line 50, in _snmp_get_async
+    transport = await UdpTransportTarget.create(
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        (device.ip, 161), timeout=SNMP_TIMEOUT, retries=SNMP_RETRIES
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\pysnmp\hlapi\transport.py", line 60, in create
+    self.transport_address = await self._resolve_address(transportAddr)
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\pysnmp\hlapi\v3arch\asyncio\transport.py", line 59, in _resolve_address
+    await loop.getaddrinfo(
+    ...<5 lines>...
+    )
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\asyncio\base_events.py", line 933, in getaddrinfo
+    return await self.run_in_executor(
+                 ~~~~~~~~~~~~~~~~~~~~^
+        None, getaddr_func, host, port, family, type, proto, flags)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\asyncio\base_events.py", line 895, in run_in_executor
+    executor.submit(func, *args), loop=self)
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\concurrent\futures\thread.py", line 173, in submit
+    raise RuntimeError('cannot schedule new futures after '
+                       'interpreter shutdown')
+RuntimeError: cannot schedule new futures after interpreter shutdown
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\comfutech-monitor\monitoreo\services\traffic.py", line 79, in poll_traffic
+    curr_in, curr_out = _get_interface_counters(device, iface.if_index)
+                        ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\comfutech-monitor\monitoreo\services\traffic.py", line 28, in _get_interface_counters
+    values = snmp_get_multiple(device, oids_64)
+  File "C:\comfutech-monitor\monitoreo\services\snmp_client.py", line 80, in snmp_get_multiple
+    return loop.run_until_complete(_snmp_get_async(device, oids))
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\asyncio\base_events.py", line 719, in run_until_complete
+    return future.result()
+           ~~~~~~~~~~~~~^^
+  File "C:\comfutech-monitor\monitoreo\services\snmp_client.py", line 50, in _snmp_get_async
+    transport = await UdpTransportTarget.create(
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        (device.ip, 161), timeout=SNMP_TIMEOUT, retries=SNMP_RETRIES
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\pysnmp\hlapi\transport.py", line 60, in create
+    self.transport_address = await self._resolve_address(transportAddr)
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\pysnmp\hlapi\v3arch\asyncio\transport.py", line 59, in _resolve_address
+    await loop.getaddrinfo(
+    ...<5 lines>...
+    )
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\asyncio\base_events.py", line 933, in getaddrinfo
+    return await self.run_in_executor(
+                 ~~~~~~~~~~~~~~~~~~~~^
+        None, getaddr_func, host, port, family, type, proto, flags)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\asyncio\base_events.py", line 895, in run_in_executor
+    executor.submit(func, *args), loop=self)
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\concurrent\futures\thread.py", line 173, in submit
+    raise RuntimeError('cannot schedule new futures after '
+                       'interpreter shutdown')
+RuntimeError: cannot schedule new futures after interpreter shutdown
+ERROR 2026-10-17 11:28:29 monitoreo.services.traffic [4520] Error procesando RB Güigüe if4: cannot schedule new futures after interpreter shutdown
+Traceback (most recent call last):
+  File "C:\comfutech-monitor\monitoreo\services\snmp_client.py", line 76, in snmp_get_multiple
+    return asyncio.run(_snmp_get_async(device, oids))
+           ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\asyncio\runners.py", line 195, in run
+    return runner.run(main)
+           ~~~~~~~~~~^^^^^^
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\asyncio\base_events.py", line 719, in run_until_complete
+    return future.result()
+           ~~~~~~~~~~~~~^^
+  File "C:\comfutech-monitor\monitoreo\services\snmp_client.py", line 50, in _snmp_get_async
+    transport = await UdpTransportTarget.create(
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        (device.ip, 161), timeout=SNMP_TIMEOUT, retries=SNMP_RETRIES
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\pysnmp\hlapi\transport.py", line 60, in create
+    self.transport_address = await self._resolve_address(transportAddr)
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\pysnmp\hlapi\v3arch\asyncio\transport.py", line 59, in _resolve_address
+    await loop.getaddrinfo(
+    ...<5 lines>...
+    )
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\asyncio\base_events.py", line 933, in getaddrinfo
+    return await self.run_in_executor(
+                 ~~~~~~~~~~~~~~~~~~~~^
+        None, getaddr_func, host, port, family, type, proto, flags)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\asyncio\base_events.py", line 895, in run_in_executor
+    executor.submit(func, *args), loop=self)
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\concurrent\futures\thread.py", line 173, in submit
+    raise RuntimeError('cannot schedule new futures after '
+                       'interpreter shutdown')
+RuntimeError: cannot schedule new futures after interpreter shutdown
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\comfutech-monitor\monitoreo\services\traffic.py", line 79, in poll_traffic
+    curr_in, curr_out = _get_interface_counters(device, iface.if_index)
+                        ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\comfutech-monitor\monitoreo\services\traffic.py", line 28, in _get_interface_counters
+    values = snmp_get_multiple(device, oids_64)
+  File "C:\comfutech-monitor\monitoreo\services\snmp_client.py", line 80, in snmp_get_multiple
+    return loop.run_until_complete(_snmp_get_async(device, oids))
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\asyncio\base_events.py", line 719, in run_until_complete
+    return future.result()
+           ~~~~~~~~~~~~~^^
+  File "C:\comfutech-monitor\monitoreo\services\snmp_client.py", line 50, in _snmp_get_async
+    transport = await UdpTransportTarget.create(
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        (device.ip, 161), timeout=SNMP_TIMEOUT, retries=SNMP_RETRIES
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\pysnmp\hlapi\transport.py", line 60, in create
+    self.transport_address = await self._resolve_address(transportAddr)
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\pysnmp\hlapi\v3arch\asyncio\transport.py", line 59, in _resolve_address
+    await loop.getaddrinfo(
+    ...<5 lines>...
+    )
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\asyncio\base_events.py", line 933, in getaddrinfo
+    return await self.run_in_executor(
+                 ~~~~~~~~~~~~~~~~~~~~^
+        None, getaddr_func, host, port, family, type, proto, flags)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\asyncio\base_events.py", line 895, in run_in_executor
+    executor.submit(func, *args), loop=self)
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\concurrent\futures\thread.py", line 173, in submit
+    raise RuntimeError('cannot schedule new futures after '
+                       'interpreter shutdown')
+RuntimeError: cannot schedule new futures after interpreter shutdown
+INFO 2026-10-17 11:28:29 monitoreo.services.icmp_tcp [4520] [RB Güigüe] 10.253.215.3 - alive=True rtt=410.0ms loss=0% tcp=ninguno
+INFO 2026-10-17 11:28:30 monitoreo.scheduler [4520] ICMP/TCP poll OK: {'devices': 1, 'alive': 1, 'down': 0, 'errors': 0, 'duration_s': 13.21}
+ERROR 2026-10-17 11:28:30 monitoreo.services.traffic [4520] Error procesando RB Güigüe if5: cannot schedule new futures after interpreter shutdown
+Traceback (most recent call last):
+  File "C:\comfutech-monitor\monitoreo\services\snmp_client.py", line 76, in snmp_get_multiple
+    return asyncio.run(_snmp_get_async(device, oids))
+           ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\asyncio\runners.py", line 195, in run
+    return runner.run(main)
+           ~~~~~~~~~~^^^^^^
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\asyncio\base_events.py", line 719, in run_until_complete
+    return future.result()
+           ~~~~~~~~~~~~~^^
+  File "C:\comfutech-monitor\monitoreo\services\snmp_client.py", line 50, in _snmp_get_async
+    transport = await UdpTransportTarget.create(
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        (device.ip, 161), timeout=SNMP_TIMEOUT, retries=SNMP_RETRIES
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\pysnmp\hlapi\transport.py", line 60, in create
+    self.transport_address = await self._resolve_address(transportAddr)
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\pysnmp\hlapi\v3arch\asyncio\transport.py", line 59, in _resolve_address
+    await loop.getaddrinfo(
+    ...<5 lines>...
+    )
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\asyncio\base_events.py", line 933, in getaddrinfo
+    return await self.run_in_executor(
+                 ~~~~~~~~~~~~~~~~~~~~^
+        None, getaddr_func, host, port, family, type, proto, flags)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\asyncio\base_events.py", line 895, in run_in_executor
+    executor.submit(func, *args), loop=self)
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\concurrent\futures\thread.py", line 173, in submit
+    raise RuntimeError('cannot schedule new futures after '
+                       'interpreter shutdown')
+RuntimeError: cannot schedule new futures after interpreter shutdown
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\comfutech-monitor\monitoreo\services\traffic.py", line 79, in poll_traffic
+    curr_in, curr_out = _get_interface_counters(device, iface.if_index)
+                        ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\comfutech-monitor\monitoreo\services\traffic.py", line 28, in _get_interface_counters
+    values = snmp_get_multiple(device, oids_64)
+  File "C:\comfutech-monitor\monitoreo\services\snmp_client.py", line 80, in snmp_get_multiple
+    return loop.run_until_complete(_snmp_get_async(device, oids))
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\asyncio\base_events.py", line 719, in run_until_complete
+    return future.result()
+           ~~~~~~~~~~~~~^^
+  File "C:\comfutech-monitor\monitoreo\services\snmp_client.py", line 50, in _snmp_get_async
+    transport = await UdpTransportTarget.create(
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        (device.ip, 161), timeout=SNMP_TIMEOUT, retries=SNMP_RETRIES
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\pysnmp\hlapi\transport.py", line 60, in create
+    self.transport_address = await self._resolve_address(transportAddr)
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\site-packages\pysnmp\hlapi\v3arch\asyncio\transport.py", line 59, in _resolve_address
+    await loop.getaddrinfo(
+    ...<5 lines>...
+    )
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\asyncio\base_events.py", line 933, in getaddrinfo
+    return await self.run_in_executor(
+                 ~~~~~~~~~~~~~~~~~~~~^
+        None, getaddr_func, host, port, family, type, proto, flags)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\asyncio\base_events.py", line 895, in run_in_executor
+    executor.submit(func, *args), loop=self)
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\Users\Giscard\AppData\Local\Programs\Python\Python313\Lib\concurrent\futures\thread.py", line 173, in submit
+    raise RuntimeError('cannot schedule new futures after '
+                       'interpreter shutdown')
+RuntimeError: cannot schedule new futures after interpreter shutdown
+INFO 2026-10-17 11:28:30 monitoreo.scheduler [4520] Traffic poll OK: {'devices': 1, 'interfaces': 2, 'alerts': 0, 'errors': 3, 'duration_s': 13.29}
+WARNING 2026-10-19 22:11:26 monitoreo.services.influx_reader [7596] Error consultando ICMP en InfluxDB: HTTPSConnectionPool(host='us-east-1-1.aws.cloud2.influxdata.com', port=443): Read timed out. (read timeout=9.998993999994127)
+WARNING 2026-10-19 22:19:52 monitoreo.services.influx_reader [7596] Error consultando ICMP en InfluxDB: ('Connection aborted.', ConnectionResetError(10054, 'Se ha forzado la interrupción de una conexión existente por el host remoto', None, 10054, None))
+WARNING 2026-10-20 11:15:21 monitoreo.services.influx_reader [7596] Error consultando ICMP en InfluxDB: ('Connection aborted.', ConnectionResetError(10054, 'Se ha forzado la interrupción de una conexión existente por el host remoto', None, 10054, None))
+WARNING 2026-10-20 11:15:53 monitoreo.services.influx_reader [7596] Error consultando traffic en InfluxDB: HTTPSConnectionPool(host='us-east-1-1.aws.cloud2.influxdata.com', port=443): Read timed out. (read timeout=0)

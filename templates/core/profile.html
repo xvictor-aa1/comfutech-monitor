@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+{% block title %}Mi perfil - Comfutech Monitor{% endblock %}
+
+{% block content %}
+
+<!-- Header -->
+<div class="d-flex justify-content-between align-items-start mb-4">
+    <div>
+        <h2 class="mb-1"><i class="bi bi-person-circle"></i> Mi perfil</h2>
+        <p class="text-muted mb-0 small">
+            Administra tu información personal y credenciales.
+        </p>
+    </div>
+    <div class="btn-group">
+        <a href="{% url 'core:dashboard' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Volver
+        </a>
+    </div>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+
+        <!-- Card de información -->
+        <div class="card mb-4">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-info-circle text-primary"></i> Cuenta
+                </h5>
+            </div>
+            <div class="card-body">
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Usuario</label>
+                        <input type="text" class="form-control"
+                               value="{{ user_obj.username }}" disabled>
+                        <div class="form-text">
+                            El nombre de usuario no se puede cambiar.
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Rol</label>
+                        <input type="text" class="form-control"
+                               value="{% if user_obj.is_superuser %}Superadministrador{% else %}{{ user_obj.groups.first.name|default:'Sin rol' }}{% endif %}"
+                               disabled>
+                        <div class="form-text">
+                            El rol se asigna desde la administración.
+                        </div>
+                    </div>
+                </div>
+
+                {% if user_obj.last_login %}
+                <div class="alert alert-light border small mb-0">
+                    <i class="bi bi-clock-history"></i>
+                    Último acceso:
+                    <strong>{{ user_obj.last_login|date:"d/m/Y H:i" }}</strong>
+                    ({{ user_obj.last_login|timesince }} atrás)
+                    {% if user_obj.date_joined %}
+                    <br>
+                    <i class="bi bi-calendar-check"></i>
+                    Cuenta creada:
+                    <strong>{{ user_obj.date_joined|date:"d/m/Y" }}</strong>
+                    {% endif %}
+                </div>
+                {% endif %}
+
+            </div>
+        </div>
+
+        <!-- Card de edición -->
+        <form method="post" novalidate>
+            {% csrf_token %}
+
+            <div class="card mb-4">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-pencil text-primary"></i> Información personal
+                    </h5>
+                </div>
+                <div class="card-body">
+
+                    {% if form.non_field_errors %}
+                    <div class="alert alert-danger">
+                        {% for err in form.non_field_errors %}<div>{{ err }}</div>{% endfor %}
+                    </div>
+                    {% endif %}
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">{{ form.first_name.label }}</label>
+                            {{ form.first_name }}
+                            {% if form.first_name.errors %}
+                            <div class="text-danger small mt-1">{{ form.first_name.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">{{ form.last_name.label }}</label>
+                            {{ form.last_name }}
+                            {% if form.last_name.errors %}
+                            <div class="text-danger small mt-1">{{ form.last_name.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="mb-0">
+                        <label class="form-label">{{ form.email.label }}</label>
+                        {{ form.email }}
+                        {% if form.email.errors %}
+                        <div class="text-danger small mt-1">{{ form.email.errors.0 }}</div>
+                        {% endif %}
+                        <div class="form-text">
+                            Se usa para notificaciones del sistema (opcional).
+                        </div>
+                    </div>
+
+                </div>
+                <div class="card-footer bg-white d-flex justify-content-between">
+                    <a href="{% url 'core:user_change_password' user_obj.id %}"
+                       class="btn btn-outline-warning">
+                        <i class="bi bi-key"></i> Cambiar contraseña
+                    </a>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-save"></i> Guardar cambios
+                    </button>
+                </div>
+            </div>
+
+        </form>
+    </div>
+</div>
+
+{% endblock %}

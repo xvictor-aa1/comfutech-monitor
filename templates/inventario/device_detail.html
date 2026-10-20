@@ -1,0 +1,212 @@
+{% extends "base.html" %}
+{% block title %}{{ device.name }} - Comfutech Monitor{% endblock %}
+
+{% block content %}
+
+<!-- Breadcrumb -->
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'inventario:device_list' %}">Equipos</a></li>
+        <li class="breadcrumb-item active">{{ device.name }}</li>
+    </ol>
+</nav>
+
+<!-- Header -->
+<div class="d-flex justify-content-between align-items-start mb-4">
+    <div>
+        <h2 class="mb-1">{{ device.name }}</h2>
+        <p class="text-muted mb-0">
+            <code>{{ device.ip }}</code> ·
+            <span class="badge badge-role badge-{{ device.device_role }}">
+                {{ device.get_device_role_display }}
+            </span> ·
+            {{ device.vendor|default:"Genérico" }}
+            {% if device.device_model %}
+                <span class="text-muted">/ {{ device.device_model.name }}</span>
+            {% endif %}
+            · {{ device.location }}
+            {% if not device.active %}
+                <span class="badge bg-secondary ms-2">Inactivo</span>
+            {% endif %}
+        </p>
+    </div>
+    <div class="btn-group">
+        <a href="{% url 'inventario:device_list' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Volver
+        </a>
+        <a href="{% url 'inventario:device_interfaces' device.id %}" class="btn btn-outline-primary">
+            <i class="bi bi-ethernet"></i> Interfaces
+        </a>
+        {% if is_admin %}
+        <a href="{% url 'inventario:device_edit' device.id %}" class="btn btn-outline-secondary">
+            <i class="bi bi-pencil"></i> Editar
+        </a>
+        <a href="{% url 'inventario:device_delete' device.id %}" class="btn btn-outline-danger">
+            <i class="bi bi-trash"></i> Eliminar
+        </a>
+        {% endif %}
+    </div>
+</div>
+
+<div class="row g-4">
+
+    <!-- ============================================================ -->
+    <!-- COLUMNA IZQUIERDA                                             -->
+    <!-- ============================================================ -->
+    <div class="col-lg-4">
+
+        <!-- Información -->
+        <div class="card mb-4">
+            <div class="card-header bg-white">
+                <strong><i class="bi bi-info-circle text-primary"></i> Información</strong>
+            </div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-sm-5">Tipo</dt>
+                    <dd class="col-sm-7">{{ device.get_device_type_display }}</dd>
+
+                    <dt class="col-sm-5">Rol</dt>
+                    <dd class="col-sm-7">
+                        <span class="badge badge-role badge-{{ device.device_role }}">
+                            {{ device.get_device_role_display }}
+                        </span>
+                    </dd>
+
+                    <dt class="col-sm-5">Fabricante</dt>
+                    <dd class="col-sm-7">{{ device.vendor|default:"—" }}</dd>
+
+                    <dt class="col-sm-5">Modelo</dt>
+                    <dd class="col-sm-7">
+                        {% if device.device_model %}
+                            <strong>{{ device.device_model.name }}</strong>
+                        {% else %}
+                            <span class="text-muted">Sin asignar</span>
+                        {% endif %}
+                    </dd>
+
+                    <dt class="col-sm-5">Ubicación</dt>
+                    <dd class="col-sm-7">{{ device.location|default:"—" }}</dd>
+
+                    <dt class="col-sm-5">Estado</dt>
+                    <dd class="col-sm-7">
+                        {% if device.active %}
+                            <span class="text-success">
+                                <i class="bi bi-check-circle-fill"></i> Activo
+                            </span>
+                        {% else %}
+                            <span class="text-muted">
+                                <i class="bi bi-dash-circle"></i> Inactivo
+                            </span>
+                        {% endif %}
+                    </dd>
+                </dl>
+            </div>
+        </div>
+
+        <!-- SNMP -->
+        <div class="card mb-4">
+            <div class="card-header bg-white">
+                <strong><i class="bi bi-shield-lock text-danger"></i> SNMP</strong>
+            </div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-sm-5">Versión</dt>
+                    <dd class="col-sm-7">
+                        <span class="badge bg-secondary">v{{ device.snmp_version }}</span>
+                    </dd>
+
+                    <dt class="col-sm-5">Community</dt>
+                    <dd class="col-sm-7"><code>{{ device.snmp_community|default:"—" }}</code></dd>
+
+                    {% if device.snmp_user %}
+                    <dt class="col-sm-5">Usuario</dt>
+                    <dd class="col-sm-7"><code>{{ device.snmp_user }}</code></dd>
+                    {% endif %}
+
+                    <dt class="col-sm-5">Puertos TCP</dt>
+                    <dd class="col-sm-7"><code>{{ device.tcp_ports|default:"161" }}</code></dd>
+                </dl>
+            </div>
+        </div>
+
+        <!-- Interfaces -->
+        <div class="card">
+            <div class="card-header bg-white">
+                <strong><i class="bi bi-ethernet text-success"></i> Interfaces</strong>
+            </div>
+            <div class="card-body">
+                <div class="d-flex justify-content-between mb-2">
+                    <span>Total:</span>
+                    <strong>{{ total_count }}</strong>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                    <span>Monitoreadas:</span>
+                    <strong class="text-success">{{ monitored_count }}</strong>
+                </div>
+                {% if total_count %}
+                <div class="progress mt-3" style="height: 8px;">
+                    <div class="progress-bar bg-success"
+                         style="width: {% widthratio monitored_count total_count 100 %}%"></div>
+                </div>
+                {% endif %}
+                <a href="{% url 'inventario:device_interfaces' device.id %}"
+                   class="btn btn-sm btn-outline-primary w-100 mt-3">
+                    <i class="bi bi-list-check"></i> Gestionar interfaces
+                </a>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- COLUMNA DERECHA                                               -->
+    <!-- ============================================================ -->
+    <div class="col-lg-8">
+
+        <!-- Últimas alertas -->
+        <div class="card">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <strong><i class="bi bi-bell text-warning"></i> Últimas alertas</strong>
+                <a href="{% url 'alertas:alert_list' %}?device={{ device.id }}"
+                   class="btn btn-sm btn-outline-secondary">Ver todas</a>
+            </div>
+            <div class="list-group list-group-flush">
+                {% for alert in alerts %}
+                <div class="list-group-item">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <span class="badge
+                                {% if alert.severity == 'critical' %}bg-danger
+                                {% elif alert.severity == 'warning' %}bg-warning text-dark
+                                {% else %}bg-info{% endif %}">
+                                {{ alert.get_severity_display }}
+                            </span>
+                            <code class="ms-2 small">{{ alert.alert_type }}</code>
+                        </div>
+                        <small class="text-muted">{{ alert.created_at|date:"d/m/Y H:i" }}</small>
+                    </div>
+                    <div class="mt-1 small">{{ alert.message }}</div>
+                    <div class="mt-1">
+                        {% if alert.status == "activa" %}
+                            <span class="badge bg-danger">Activa</span>
+                        {% elif alert.status == "reconocida" %}
+                            <span class="badge bg-warning text-dark">Reconocida</span>
+                        {% else %}
+                            <span class="badge bg-success">Resuelta</span>
+                        {% endif %}
+                    </div>
+                </div>
+                {% empty %}
+                <div class="list-group-item text-center text-muted py-5">
+                    <i class="bi bi-check-circle" style="font-size: 2rem; color: #198754;"></i>
+                    <p class="mb-0 mt-2">Sin alertas para este equipo</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}

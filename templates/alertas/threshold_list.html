@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}Umbrales - Comfutech Monitor{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-sliders"></i> Umbrales de alerta</h2>
+    {% if is_admin %}
+    <a href="{% url 'thresholds:threshold_create' %}" class="btn btn-primary">
+        <i class="bi bi-plus-lg"></i> Nuevo umbral
+    </a>
+    {% endif %}
+</div>
+
+<div class="card">
+    <div class="table-responsive">
+        <table class="table table-hover mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>ID</th>
+                    <th>Equipo</th>
+                    <th>Métrica</th>
+                    <th>Warning</th>
+                    <th>Critical</th>
+                    <th>Duración</th>
+                    <th>Estado</th>
+                    <th class="text-end">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for t in thresholds %}
+                <tr>
+                    <td>{{ t.id }}</td>
+                    <td>{{ t.device.name|default:"— Todos —" }}</td>
+                    <td><code>{{ t.metric }}</code></td>
+                    <td>{{ t.warning_value|default:"—" }}</td>
+                    <td>{{ t.critical_value|default:"—" }}</td>
+                    <td>{{ t.duration_sec }} s</td>
+                    <td>
+                        {% if t.active %}
+                            <span class="badge bg-success">Activo</span>
+                        {% else %}
+                            <span class="badge bg-secondary">Inactivo</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-end">
+                        {% if is_admin %}
+                        <a href="{% url 'thresholds:threshold_edit' t.id %}"
+                           class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i></a>
+                        <a href="{% url 'thresholds:threshold_delete' t.id %}"
+                           class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="8" class="text-center text-muted py-5">
+                        No hay umbrales definidos.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
