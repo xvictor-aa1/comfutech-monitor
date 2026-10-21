@@ -1386,3 +1386,169 @@ INFO 2026-10-20 11:15:55 django.server [7596] "GET /monitoreo/api/devices-live/ 
 INFO 2026-10-20 11:16:18 django.server [7596] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 589
 INFO 2026-10-20 11:17:18 django.server [7596] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 589
 INFO 2026-10-20 11:18:18 django.server [7596] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 589
+INFO 2026-10-20 23:31:28 django.utils.autoreload [7212] Watching for file changes with StatReloader
+INFO 2026-10-20 23:38:00 django.utils.autoreload [7832] Watching for file changes with StatReloader
+INFO 2026-10-20 23:47:43 django.utils.autoreload [3012] Watching for file changes with StatReloader
+INFO 2026-10-20 23:49:09 django.server [3012] "GET / HTTP/1.1" 302 0
+INFO 2026-10-20 23:49:14 django.server [3012] "GET /accounts/login/?next=/ HTTP/1.1" 200 21639
+INFO 2026-10-20 23:49:22 django.server [3012] "GET /static/css/style.css HTTP/1.1" 200 53219
+WARNING 2026-10-20 23:49:26 django.request [3012] Not Found: /favicon.ico
+WARNING 2026-10-20 23:49:26 django.server [3012] "GET /favicon.ico HTTP/1.1" 404 8358
+INFO 2026-10-20 23:49:45 django.server [3012] "POST /accounts/login/?next=/ HTTP/1.1" 302 0
+INFO 2026-10-20 23:49:47 django.server [3012] "GET / HTTP/1.1" 200 42887
+INFO 2026-10-20 23:49:59 django.server [3012] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1919
+INFO 2026-10-20 23:50:04 django.server [3012] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1919
+INFO 2026-10-20 23:50:15 django.server [3012] "GET /alertas/reglas/nueva/ HTTP/1.1" 200 71636
+INFO 2026-10-20 23:50:19 django.server [3012] "GET /monitoreo/live/ HTTP/1.1" 200 48939
+INFO 2026-10-20 23:50:20 django.server [3012] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1919
+INFO 2026-10-20 23:50:24 django.server [3012] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1919
+INFO 2026-10-20 23:50:27 django.server [3012] "GET /monitoreo/status/ HTTP/1.1" 200 31839
+INFO 2026-10-20 23:50:32 django.server [3012] "GET /monitoreo/live/ HTTP/1.1" 200 48939
+INFO 2026-10-20 23:50:34 django.server [3012] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1919
+INFO 2026-10-20 23:50:36 django.server [3012] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1919
+INFO 2026-10-20 23:50:38 django.server [3012] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1919
+INFO 2026-10-20 23:50:40 django.server [3012] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1919
+INFO 2026-10-20 23:50:43 django.server [3012] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1919
+INFO 2026-10-20 23:50:53 django.server [3012] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1913
+INFO 2026-10-20 23:50:53 django.server [3012] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1913
+INFO 2026-10-20 23:50:58 django.server [3012] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1913
+INFO 2026-10-20 23:51:03 django.server [3012] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1913
+INFO 2026-10-20 23:51:14 django.server [3012] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1913
+INFO 2026-10-20 23:51:23 django.server [3012] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1913
+INFO 2026-10-20 23:51:30 django.server [3012] "GET / HTTP/1.1" 200 42887
+INFO 2026-10-20 23:51:32 django.server [3012] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1913
+INFO 2026-10-20 23:51:46 django.server [3012] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1913
+INFO 2026-10-20 23:52:02 django.server [3012] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1915
+INFO 2026-10-20 23:52:17 django.server [3012] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1915
+INFO 2026-10-20 23:52:31 django.server [3012] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1915
+INFO 2026-10-20 23:52:46 django.server [3012] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1916
+INFO 2026-10-20 23:53:01 django.server [3012] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1917
+INFO 2026-10-20 23:53:16 django.server [3012] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1917
+INFO 2026-10-20 23:54:23 django.server [3012] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1913
+INFO 2026-10-20 23:55:23 django.server [3012] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1914
+INFO 2026-10-20 23:56:23 django.server [3012] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1915
+INFO 2026-10-20 23:57:23 django.server [3012] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1918
+INFO 2026-10-20 23:58:23 django.server [3012] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1915
+INFO 2026-10-20 23:59:23 django.server [3012] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1912
+INFO 2026-10-21 00:00:23 django.server [3012] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1912
+INFO 2026-10-21 00:01:23 django.server [3012] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1912
+INFO 2026-10-21 00:02:24 django.server [3012] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1912
+INFO 2026-10-21 00:03:23 django.server [3012] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1912
+INFO 2026-10-21 00:03:32 django.server [3012] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1912
+INFO 2026-10-21 00:03:49 django.server [3012] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1912
+INFO 2026-10-21 00:04:02 django.server [3012] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1912
+INFO 2026-10-21 00:04:17 django.server [3012] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1912
+INFO 2026-10-21 00:04:32 django.server [3012] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1912
+INFO 2026-10-21 00:04:47 django.server [3012] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1912
+INFO 2026-10-21 00:05:01 django.server [3012] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1912
+INFO 2026-10-21 00:05:16 django.server [3012] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1912
+INFO 2026-10-21 00:06:19 django.utils.autoreload [3012] C:\comfutech-monitor\inventario\forms.py changed, reloading.
+INFO 2026-10-21 00:06:55 django.utils.autoreload [6432] Watching for file changes with StatReloader
+INFO 2026-10-21 00:07:33 django.server [6432] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1912
+INFO 2026-10-21 00:07:42 django.utils.autoreload [6432] C:\comfutech-monitor\inventario\views.py changed, reloading.
+INFO 2026-10-21 00:07:54 django.utils.autoreload [5300] Watching for file changes with StatReloader
+INFO 2026-10-21 00:08:10 django.server [5300] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1912
+INFO 2026-10-21 00:08:16 django.server [5300] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1912
+INFO 2026-10-21 00:08:31 django.server [5300] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1912
+INFO 2026-10-21 00:08:46 django.server [5300] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1912
+INFO 2026-10-21 00:09:03 django.server [5300] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1912
+INFO 2026-10-21 00:09:07 django.utils.autoreload [5300] C:\comfutech-monitor\inventario\views.py changed, reloading.
+INFO 2026-10-21 00:09:13 django.utils.autoreload [4552] Watching for file changes with StatReloader
+INFO 2026-10-21 00:09:21 django.server [4552] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1912
+INFO 2026-10-21 00:09:32 django.server [4552] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1912
+INFO 2026-10-21 00:09:46 django.server [4552] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1912
+INFO 2026-10-21 00:09:48 django.utils.autoreload [4552] C:\comfutech-monitor\inventario\urls.py changed, reloading.
+INFO 2026-10-21 00:09:54 django.utils.autoreload [2124] Watching for file changes with StatReloader
+INFO 2026-10-21 00:10:02 django.utils.autoreload [2124] C:\comfutech-monitor\inventario\urls.py changed, reloading.
+INFO 2026-10-21 00:10:06 django.utils.autoreload [3568] Watching for file changes with StatReloader
+INFO 2026-10-21 00:10:13 django.utils.autoreload [3568] C:\comfutech-monitor\inventario\urls.py changed, reloading.
+INFO 2026-10-21 00:10:16 django.utils.autoreload [7324] Watching for file changes with StatReloader
+INFO 2026-10-21 00:10:27 django.utils.autoreload [7324] C:\comfutech-monitor\inventario\urls.py changed, reloading.
+INFO 2026-10-21 00:10:32 django.utils.autoreload [6100] Watching for file changes with StatReloader
+INFO 2026-10-21 00:10:39 django.utils.autoreload [6100] C:\comfutech-monitor\inventario\urls.py changed, reloading.
+INFO 2026-10-21 00:10:43 django.utils.autoreload [3352] Watching for file changes with StatReloader
+INFO 2026-10-21 00:10:57 django.utils.autoreload [3352] C:\comfutech-monitor\inventario\urls.py changed, reloading.
+INFO 2026-10-21 00:11:01 django.utils.autoreload [7360] Watching for file changes with StatReloader
+INFO 2026-10-21 00:11:08 django.utils.autoreload [7360] C:\comfutech-monitor\inventario\urls.py changed, reloading.
+INFO 2026-10-21 00:11:12 django.utils.autoreload [1600] Watching for file changes with StatReloader
+INFO 2026-10-21 00:11:19 django.utils.autoreload [1600] C:\comfutech-monitor\inventario\urls.py changed, reloading.
+INFO 2026-10-21 00:11:27 django.utils.autoreload [6544] Watching for file changes with StatReloader
+INFO 2026-10-21 00:11:34 django.server [6544] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1912
+INFO 2026-10-21 00:11:49 django.utils.autoreload [6544] C:\comfutech-monitor\inventario\urls.py changed, reloading.
+INFO 2026-10-21 00:11:58 django.utils.autoreload [3320] Watching for file changes with StatReloader
+INFO 2026-10-21 00:12:08 django.utils.autoreload [3320] C:\comfutech-monitor\inventario\urls.py changed, reloading.
+INFO 2026-10-21 00:12:12 django.utils.autoreload [6064] Watching for file changes with StatReloader
+INFO 2026-10-21 00:12:21 django.utils.autoreload [6064] C:\comfutech-monitor\inventario\urls.py changed, reloading.
+INFO 2026-10-21 00:12:26 django.utils.autoreload [7132] Watching for file changes with StatReloader
+INFO 2026-10-21 00:12:34 django.utils.autoreload [7132] C:\comfutech-monitor\inventario\urls.py changed, reloading.
+INFO 2026-10-21 00:12:38 django.utils.autoreload [7524] Watching for file changes with StatReloader
+INFO 2026-10-21 00:13:14 django.server [7524] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1912
+INFO 2026-10-21 00:13:16 django.server [7524] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1912
+INFO 2026-10-21 00:13:31 django.server [7524] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1912
+INFO 2026-10-21 00:13:46 django.server [7524] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1912
+INFO 2026-10-21 00:14:01 django.server [7524] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1912
+INFO 2026-10-21 00:14:16 django.server [7524] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1912
+INFO 2026-10-21 00:14:31 django.server [7524] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1912
+INFO 2026-10-21 00:14:47 django.server [7524] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1912
+INFO 2026-10-21 00:15:01 django.server [7524] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1912
+INFO 2026-10-21 00:15:17 django.server [7524] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1912
+INFO 2026-10-21 00:15:31 django.server [7524] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1912
+INFO 2026-10-21 00:15:46 django.server [7524] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1912
+INFO 2026-10-21 00:16:01 django.server [7524] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1912
+INFO 2026-10-21 00:16:16 django.server [7524] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1912
+INFO 2026-10-21 00:16:55 django.server [7524] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1912
+INFO 2026-10-21 00:17:01 django.server [7524] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1912
+INFO 2026-10-21 00:17:16 django.server [7524] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1912
+INFO 2026-10-21 00:17:32 django.server [7524] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1912
+INFO 2026-10-21 00:17:46 django.server [7524] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1912
+INFO 2026-10-21 00:18:23 django.server [7524] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1912
+INFO 2026-10-21 00:18:56 django.server [7524] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1919
+INFO 2026-10-21 00:19:01 django.server [7524] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1922
+INFO 2026-10-21 00:19:16 django.server [7524] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1922
+INFO 2026-10-21 00:19:31 django.server [7524] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1922
+INFO 2026-10-21 00:19:47 django.server [7524] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1922
+INFO 2026-10-21 00:20:02 django.server [7524] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1920
+INFO 2026-10-21 00:20:16 django.server [7524] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1920
+INFO 2026-10-21 00:20:31 django.server [7524] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1920
+INFO 2026-10-21 00:20:47 django.server [7524] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1921
+INFO 2026-10-21 00:21:01 django.server [7524] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1922
+INFO 2026-10-21 00:21:16 django.server [7524] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1922
+INFO 2026-10-21 00:21:31 django.server [7524] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1922
+INFO 2026-10-21 00:21:46 django.server [7524] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1923
+INFO 2026-10-21 00:22:02 django.server [7524] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1916
+INFO 2026-10-21 00:22:16 django.server [7524] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1916
+INFO 2026-10-21 00:22:32 django.server [7524] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1916
+INFO 2026-10-21 00:22:46 django.server [7524] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1920
+INFO 2026-10-21 00:23:01 django.server [7524] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1920
+INFO 2026-10-21 00:23:16 django.server [7524] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1920
+INFO 2026-10-21 00:23:31 django.server [7524] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1920
+INFO 2026-10-21 00:24:00 django.server [7524] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1916
+INFO 2026-10-21 00:24:01 django.server [7524] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1916
+INFO 2026-10-21 00:24:16 django.server [7524] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1916
+INFO 2026-10-21 00:24:32 django.server [7524] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1916
+INFO 2026-10-21 00:24:46 django.server [7524] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1915
+INFO 2026-10-21 00:25:01 django.server [7524] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1916
+INFO 2026-10-21 00:25:24 django.server [7524] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1916
+INFO 2026-10-21 00:25:39 django.server [7524] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1916
+INFO 2026-10-21 00:25:46 django.server [7524] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1921
+INFO 2026-10-21 00:26:02 django.server [7524] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1920
+INFO 2026-10-21 00:26:16 django.server [7524] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1920
+INFO 2026-10-21 00:26:31 django.server [7524] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1920
+INFO 2026-10-21 00:26:46 django.server [7524] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1918
+INFO 2026-10-21 00:27:01 django.server [7524] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1918
+INFO 2026-10-21 00:27:16 django.server [7524] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1918
+INFO 2026-10-21 00:27:32 django.server [7524] "GET /monitoreo/api/devices-live/ HTTP/1.1" 200 1918
+INFO 2026-10-21 00:27:37 django.server [7524] "GET /equipos/nuevo/ HTTP/1.1" 200 40766
+INFO 2026-10-21 00:27:48 django.server [7524] "GET /equipos/api/models/?vendor=Otro HTTP/1.1" 200 14
+INFO 2026-10-21 00:28:00 django.server [7524] "GET /equipos/ HTTP/1.1" 200 36886
+INFO 2026-10-21 00:28:05 django.server [7524] "GET /equipos/modelos/ HTTP/1.1" 200 54722
+INFO 2026-10-21 00:28:17 django.server [7524] "GET /equipos/modelos/5/editar/ HTTP/1.1" 200 36378
+INFO 2026-10-21 00:28:55 django.server [7524] "GET /equipos/modelos/ HTTP/1.1" 200 54722
+INFO 2026-10-21 00:29:07 django.server [7524] "GET /equipos/modelos/nuevo/ HTTP/1.1" 200 36120
+INFO 2026-10-21 00:29:20 django.server [7524] "GET /equipos/modelos/ HTTP/1.1" 200 54722
+INFO 2026-10-21 00:29:24 django.server [7524] "GET /equipos/ HTTP/1.1" 200 36886
+INFO 2026-10-21 00:36:00 django.server [7524] "GET /equipos/ HTTP/1.1" 200 37052
+INFO 2026-10-21 00:36:04 django.server [7524] "GET /static/css/style.css HTTP/1.1" 200 53219
+WARNING 2026-10-21 00:36:08 django.request [7524] Not Found: /favicon.ico
+WARNING 2026-10-21 00:36:08 django.server [7524] "GET /favicon.ico HTTP/1.1" 404 8358
+INFO 2026-10-21 00:36:17 django.server [7524] "GET /equipos/modelos/ HTTP/1.1" 200 54888

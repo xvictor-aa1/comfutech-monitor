@@ -1,0 +1,253 @@
+{% extends "base.html" %}
+{% block title %}{{ title }} - Comfutech Monitor{% endblock %}
+
+{% block content %}
+
+<!-- ============================================================ -->
+<!-- Header                                                       -->
+<!-- ============================================================ -->
+<div class="d-flex justify-content-between align-items-start mb-4">
+    <div>
+        <h2 class="mb-1">{{ title }}</h2>
+        <p class="text-muted mb-0 small">
+            {% if is_edit %}
+                Modifica el modelo y sus OIDs específicos.
+                {% if devices_count > 0 %}
+                <span class="badge bg-info">{{ devices_count }} equipo(s) usan este modelo</span>
+                {% endif %}
+            {% else %}
+                Define un nuevo modelo con sus OIDs propios (opcionales).
+            {% endif %}
+        </p>
+    </div>
+    <div class="btn-group">
+        <a href="{% url 'inventario:device_model_list' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Volver
+        </a>
+    </div>
+</div>
+
+{% if form.non_field_errors %}
+<div class="alert alert-danger">
+    {% for err in form.non_field_errors %}<div>{{ err }}</div>{% endfor %}
+</div>
+{% endif %}
+
+<form method="post" id="model-form" novalidate>
+    {% csrf_token %}
+
+    <div class="row g-4">
+
+        <!-- ============================================================ -->
+        <!-- Identificación                                                -->
+        <!-- ============================================================ -->
+        <div class="col-lg-5">
+            <div class="card h-100">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-tag text-primary"></i> Identificación
+                    </h5>
+                </div>
+                <div class="card-body">
+
+                    <div class="mb-3">
+                        <label class="form-label" for="{{ form.vendor.id_for_label }}">
+                            Fabricante <span class="text-danger">*</span>
+                        </label>
+                        {{ form.vendor }}
+                        {% if form.vendor.errors %}
+                        <div class="text-danger small mt-1">{{ form.vendor.errors.0 }}</div>
+                        {% endif %}
+                        {% if form.vendor.help_text %}
+                        <div class="form-text">{{ form.vendor.help_text }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label" for="{{ form.name.id_for_label }}">
+                            Nombre del modelo <span class="text-danger">*</span>
+                        </label>
+                        {{ form.name }}
+                        {% if form.name.errors %}
+                        <div class="text-danger small mt-1">{{ form.name.errors.0 }}</div>
+                        {% endif %}
+                        <div class="form-text">
+                            Ej: <em>RB4011iGS+</em>, <em>AirMax LiteBeam M5</em>,
+                            <em>ePMP 1000</em>.
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label" for="{{ form.description.id_for_label }}">
+                            Descripción
+                        </label>
+                        {{ form.description }}
+                        {% if form.description.errors %}
+                        <div class="text-danger small mt-1">{{ form.description.errors.0 }}</div>
+                        {% endif %}
+                        <div class="form-text">Notas opcionales.</div>
+                    </div>
+
+                    <div class="form-check form-switch mb-2">
+                        {{ form.is_wireless_link }}
+                        <label class="form-check-label" for="{{ form.is_wireless_link.id_for_label }}">
+                            <strong>Es radio-enlace</strong>
+                            <span class="text-muted small d-block">
+                                Marca si es un equipo de radio-enlace
+                                (AirMax, Cambium, Mimosa, etc.). Habilita
+                                el bloque de <em>utilización de enlace</em>
+                                en el monitoreo en vivo.
+                            </span>
+                        </label>
+                    </div>
+
+                    <div class="form-check form-switch">
+                        {{ form.active }}
+                        <label class="form-check-label" for="{{ form.active.id_for_label }}">
+                            <strong>Modelo activo</strong>
+                            <span class="text-muted small d-block">
+                                Si está desactivado, no aparecerá en el
+                                selector de modelos al crear un equipo.
+                            </span>
+                        </label>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <!-- ============================================================ -->
+        <!-- OIDs SNMP                                                    -->
+        <!-- ============================================================ -->
+        <div class="col-lg-7">
+            <div class="card h-100">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-braces text-warning"></i> OIDs SNMP
+                    </h5>
+                </div>
+                <div class="card-body">
+
+                    <div class="alert alert-info small mb-3">
+                        <i class="bi bi-info-circle"></i>
+                        Todos los campos son <strong>opcionales</strong>.
+                        Si los dejas vacíos, se usarán los OIDs por defecto
+                        del fabricante. Solo completa los que necesites
+                        sobrescribir.
+                    </div>
+
+                    <!-- CPU -->
+                    <div class="mb-3">
+                        <label class="form-label" for="{{ form.oid_cpu_pct.id_for_label }}">
+                            {{ form.oid_cpu_pct.label }}
+                        </label>
+                        {{ form.oid_cpu_pct }}
+                        {% if form.oid_cpu_pct.errors %}
+                        <div class="text-danger small mt-1">{{ form.oid_cpu_pct.errors.0 }}</div>
+                        {% endif %}
+                        <div class="form-text">{{ form.oid_cpu_pct.help_text }}</div>
+                    </div>
+
+                    <!-- Memoria -->
+                    <fieldset class="border rounded p-3 mb-3">
+                        <legend class="float-none w-auto px-2 fs-6 text-muted">
+                            <i class="bi bi-memory"></i> Memoria
+                        </legend>
+
+                        <div class="row g-2">
+                            <div class="col-md-6">
+                                <label class="form-label" for="{{ form.oid_mem_pct.id_for_label }}">
+                                    {{ form.oid_mem_pct.label }}
+                                </label>
+                                {{ form.oid_mem_pct }}
+                                {% if form.oid_mem_pct.errors %}
+                                <div class="text-danger small mt-1">{{ form.oid_mem_pct.errors.0 }}</div>
+                                {% endif %}
+                                <div class="form-text">{{ form.oid_mem_pct.help_text }}</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label" for="{{ form.oid_mem_free.id_for_label }}">
+                                    {{ form.oid_mem_free.label }}
+                                </label>
+                                {{ form.oid_mem_free }}
+                                {% if form.oid_mem_free.errors %}
+                                <div class="text-danger small mt-1">{{ form.oid_mem_free.errors.0 }}</div>
+                                {% endif %}
+                                <div class="form-text">{{ form.oid_mem_free.help_text }}</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label" for="{{ form.oid_mem_used.id_for_label }}">
+                                    {{ form.oid_mem_used.label }}
+                                </label>
+                                {{ form.oid_mem_used }}
+                                {% if form.oid_mem_used.errors %}
+                                <div class="text-danger small mt-1">{{ form.oid_mem_used.errors.0 }}</div>
+                                {% endif %}
+                                <div class="form-text">{{ form.oid_mem_used.help_text }}</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label" for="{{ form.oid_mem_size.id_for_label }}">
+                                    {{ form.oid_mem_size.label }}
+                                </label>
+                                {{ form.oid_mem_size }}
+                                {% if form.oid_mem_size.errors %}
+                                <div class="text-danger small mt-1">{{ form.oid_mem_size.errors.0 }}</div>
+                                {% endif %}
+                                <div class="form-text">{{ form.oid_mem_size.help_text }}</div>
+                            </div>
+                        </div>
+                    </fieldset>
+
+                    <!-- Temperatura -->
+                    <div class="mb-3">
+                        <label class="form-label" for="{{ form.oid_temp_c.id_for_label }}">
+                            {{ form.oid_temp_c.label }}
+                        </label>
+                        {{ form.oid_temp_c }}
+                        {% if form.oid_temp_c.errors %}
+                        <div class="text-danger small mt-1">{{ form.oid_temp_c.errors.0 }}</div>
+                        {% endif %}
+                        <div class="form-text">{{ form.oid_temp_c.help_text }}</div>
+                    </div>
+
+                    <!-- Uptime -->
+                    <div class="mb-0">
+                        <label class="form-label" for="{{ form.oid_uptime.id_for_label }}">
+                            {{ form.oid_uptime.label }}
+                        </label>
+                        {{ form.oid_uptime }}
+                        {% if form.oid_uptime.errors %}
+                        <div class="text-danger small mt-1">{{ form.oid_uptime.errors.0 }}</div>
+                        {% endif %}
+                        <div class="form-text">{{ form.oid_uptime.help_text }}</div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- Botones                                                       -->
+    <!-- ============================================================ -->
+    <div class="d-flex justify-content-between align-items-center mt-4">
+        <a href="{% url 'inventario:device_model_list' %}"
+           class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Cancelar
+        </a>
+        <div>
+            {% if is_edit %}
+            <a href="{% url 'inventario:device_model_delete' model_obj.id %}"
+               class="btn btn-outline-danger me-2">
+                <i class="bi bi-trash"></i> Eliminar
+            </a>
+            {% endif %}
+            <button type="submit" class="btn btn-primary btn-lg">
+                <i class="bi bi-save"></i>
+                {% if is_edit %}Guardar cambios{% else %}Crear modelo{% endif %}
+            </button>
+        </div>
+    </div>
+</form>
+
+{% endblock %}

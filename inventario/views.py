@@ -1,14 +1,35 @@
 # inventario/views.py
+"""
+Vistas de la app `inventario`.
+
+Incluye:
+  - Equipos (Device):
+      · device_list     — listado paginado (10/pág) con filtros y orden.
+      · device_detail   — detalle de un equipo.
+      · device_create   — crear equipo.
+      · device_edit     — editar equipo.
+      · device_delete   — eliminar equipo.
+      · device_interfaces — gestionar interfaces (marcar monitored).
+      · api_models      — API JSON de modelos por fabricante.
+
+  - Modelos de equipo (DeviceModel) — NUEVO:
+      · device_model_list   — listado paginado (10/pág).
+      · device_model_create — crear modelo.
+      · device_model_edit   — editar modelo.
+      · device_model_delete — eliminar modelo (bloqueado si hay equipos).
+      · device_model_toggle — activar/desactivar modelo.
+"""
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
+from django.core.paginator import Paginator
 from django.db.models import Count, Q
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
 from core.decorators import require_admin_or_super
 from core.sorting import apply_sort, has_active_filters, ROLE_ORDER
-from .forms import DeviceForm
+from .forms import DeviceForm, DeviceModelForm
 from .models import Device, DeviceModel, Interface
 
 
@@ -17,7 +38,15 @@ from .models import Device, DeviceModel, Interface
 # ============================================================
 @login_required
 def api_models(request):
-    """Devuelve los modelos activos de un fabricante (JSON)."""
+    """
+    Devuelve los modelos activos de un fabricante (JSON).
+
+    Query params:
+        vendor: nombre del fabricante (str).
+
+    Returns:
+        JsonResponse: {"models": [{"id": int, "name": str}, ...]}
+    """
     vendor = request.GET.get("vendor", "").strip()
     if not vendor:
         return JsonResponse({"models": []})
@@ -30,16 +59,27 @@ def api_models(request):
 
 
 # ============================================================
-# LISTA DE EQUIPOS
+# LISTA DE EQUIPOS (con paginación)
 # ============================================================
 @login_required
 def device_list(request):
+    """
+    Lista los equipos con filtros, ordenamiento y **paginación (10/pág)**.
+
+    Filtros aceptados vía GET:
+        q       — búsqueda por nombre, IP o ubicación.
+        role    — rol del equipo (core/distribution/access/cpe).
+        vendor  — fabricante.
+        model   — ID del modelo.
+        active  — "1" activos, "0" inactivos.
+    """
     q = request.GET.get("q", "").strip()
     role_filter = request.GET.get("role", "")
     vendor_filter = request.GET.get("vendor", "")
     model_filter = request.GET.get("model", "")
     active_filter = request.GET.get("active", "")
 
+    # Queryset base con anotaciones para evitar N+1
     devices = (
         Device.objects
         .select_related("device_model")
@@ -55,6 +95,7 @@ def device_list(request):
         )
     )
 
+    # Aplicar filtros
     if q:
         devices = devices.filter(
             Q(name__icontains=q)
@@ -72,6 +113,7 @@ def device_list(request):
     elif active_filter == "0":
         devices = devices.filter(active=False)
 
+    # Ordenamiento
     SORTABLE = {
         "nombre":     "name",
         "ip":         "ip",
@@ -85,7 +127,11 @@ def device_list(request):
     }
     devices, sort_key, order = apply_sort(request, devices, SORTABLE, "name")
 
-    # Fabricantes disponibles
+    # Paginación: 10 equipos por página
+    paginator = Paginator(devices, 10)
+    page_obj = paginator.get_page(request.GET.get("page", 1))
+
+    # Fabricantes disponibles (para el filtro)
     vendor_choices = (
         Device.objects
         .exclude(vendor__isnull=True)
@@ -104,7 +150,9 @@ def device_list(request):
         model_choices = DeviceModel.objects.none()
 
     context = {
-        "devices": devices,
+        "devices": page_obj.object_list,
+        "page_obj": page_obj,
+        "paginator": paginator,
         "q": q,
         "role_filter": role_filter,
         "vendor_filter": vendor_filter,
@@ -128,10 +176,13 @@ def device_list(request):
 
 
 # ============================================================
-# DETALLE
+# DETALLE DE EQUIPO
 # ============================================================
 @login_required
 def device_detail(request, device_id):
+    """
+    Muestra el detalle de un equipo, sus interfaces y sus últimas alertas.
+    """
     device = get_object_or_404(
         Device.objects.select_related("device_model"), pk=device_id
     )
@@ -150,11 +201,12 @@ def device_detail(request, device_id):
 
 
 # ============================================================
-# CREAR
+# CREAR EQUIPO
 # ============================================================
 @login_required
 @require_admin_or_super()
 def device_create(request):
+    """Crea un nuevo equipo."""
     if request.method == "POST":
         form = DeviceForm(request.POST)
         if form.is_valid():
@@ -172,11 +224,12 @@ def device_create(request):
 
 
 # ============================================================
-# EDITAR
+# EDITAR EQUIPO
 # ============================================================
 @login_required
 @require_admin_or_super()
 def device_edit(request, device_id):
+    """Edita un equipo existente."""
     device = get_object_or_404(Device, pk=device_id)
 
     if request.method == "POST":
@@ -197,11 +250,12 @@ def device_edit(request, device_id):
 
 
 # ============================================================
-# ELIMINAR
+# ELIMINAR EQUIPO
 # ============================================================
 @login_required
 @require_admin_or_super()
 def device_delete(request, device_id):
+    """Elimina un equipo (con confirmación previa)."""
     device = get_object_or_404(Device, pk=device_id)
 
     if request.method == "POST":
@@ -216,14 +270,21 @@ def device_delete(request, device_id):
 
 
 # ============================================================
-# INTERFACES
+# GESTIONAR INTERFACES DE UN EQUIPO
 # ============================================================
 @login_required
 def device_interfaces(request, device_id):
+    """
+    Permite marcar/desmarcar interfaces como monitoreadas.
+
+    GET:  muestra la lista de interfaces con filtros y orden.
+    POST: guarda el nuevo conjunto de interfaces monitoreadas.
+    """
     device = get_object_or_404(Device, pk=device_id)
     interfaces = device.interfaces.all()
 
     if request.method == "POST":
+        # Control de permisos: solo admin/superadmin puede modificar
         if not (
             request.user.is_superuser
             or request.user.groups.filter(name="Administrador").exists()
@@ -310,3 +371,225 @@ def device_interfaces(request, device_id):
         ),
     }
     return render(request, "inventario/device_interfaces.html", context)
+
+
+# ============================================================
+# MODELOS DE EQUIPO — LISTA PAGINADA
+# ============================================================
+@login_required
+def device_model_list(request):
+    """
+    Lista los modelos de equipo con filtros, ordenamiento y **paginación**.
+
+    Filtros aceptados vía GET:
+        q        — búsqueda por nombre o descripción.
+        vendor   — fabricante.
+        wireless — "1" radio-enlaces, "0" no radio-enlaces.
+        active   — "1" activos, "0" inactivos.
+
+    Stats mostradas arriba de la tabla:
+        count_all          — total de modelos.
+        count_active       — modelos activos.
+        count_wireless     — modelos marcados como radio-enlace.
+        count_custom_oids  — modelos con al menos un OID propio.
+    """
+    q = request.GET.get("q", "").strip()
+    vendor_filter = request.GET.get("vendor", "")
+    wireless_filter = request.GET.get("wireless", "")
+    active_filter = request.GET.get("active", "")
+
+    # Queryset base con conteo de equipos asociados
+    models_qs = DeviceModel.objects.annotate(
+        devices_count=Count("devices", distinct=True),
+        active_devices_count=Count(
+            "devices",
+            filter=Q(devices__active=True),
+            distinct=True,
+        ),
+    )
+
+    # Aplicar filtros
+    if q:
+        models_qs = models_qs.filter(
+            Q(name__icontains=q) | Q(description__icontains=q)
+        )
+    if vendor_filter:
+        models_qs = models_qs.filter(vendor=vendor_filter)
+    if wireless_filter == "1":
+        models_qs = models_qs.filter(is_wireless_link=True)
+    elif wireless_filter == "0":
+        models_qs = models_qs.filter(is_wireless_link=False)
+    if active_filter == "1":
+        models_qs = models_qs.filter(active=True)
+    elif active_filter == "0":
+        models_qs = models_qs.filter(active=False)
+
+    # Ordenamiento
+    SORTABLE = {
+        "fabricante":  "vendor",
+        "modelo":      "name",
+        "radio":       "is_wireless_link",
+        "equipos":     "devices_count",
+        "activo":      "active",
+        "actualizado": "updated_at",
+    }
+    models_qs, sort_key, order = apply_sort(
+        request, models_qs, SORTABLE, "vendor"
+    )
+
+    # Paginación: 10 modelos por página
+    paginator = Paginator(models_qs, 10)
+    page_obj = paginator.get_page(request.GET.get("page", 1))
+
+    # Conteo de modelos con OIDs personalizados.
+    # Se hace en Python porque `exclude(oids={})` no es portable
+    # entre MySQL/PostgreSQL con JSONField.
+    count_custom_oids = sum(
+        1 for m in DeviceModel.objects.only("oids") if m.oids
+    )
+
+    context = {
+        "models": page_obj.object_list,
+        "page_obj": page_obj,
+        "paginator": paginator,
+        "q": q,
+        "vendor_filter": vendor_filter,
+        "wireless_filter": wireless_filter,
+        "active_filter": active_filter,
+        "sort_key": sort_key,
+        "order": order,
+        "vendor_choices": DeviceModel.VENDOR_CHOICES,
+        "count_all": DeviceModel.objects.count(),
+        "count_active": DeviceModel.objects.filter(active=True).count(),
+        "count_wireless": DeviceModel.objects.filter(
+            is_wireless_link=True
+        ).count(),
+        "count_custom_oids": count_custom_oids,
+        "has_filters": has_active_filters(
+            request, ["q", "vendor", "wireless", "active"]
+        ),
+    }
+    return render(request, "inventario/device_model_list.html", context)
+
+
+# ============================================================
+# MODELOS DE EQUIPO — CREAR
+# ============================================================
+@login_required
+@require_admin_or_super()
+def device_model_create(request):
+    """Crea un nuevo modelo de equipo con sus OIDs."""
+    if request.method == "POST":
+        form = DeviceModelForm(request.POST)
+        if form.is_valid():
+            obj = form.save()
+            messages.success(
+                request,
+                f"Modelo '{obj.name}' ({obj.vendor}) creado.",
+            )
+            return redirect("inventario:device_model_list")
+    else:
+        form = DeviceModelForm()
+
+    return render(request, "inventario/device_model_form.html", {
+        "form": form,
+        "title": "Nuevo modelo de equipo",
+        "is_edit": False,
+        "devices_count": 0,
+    })
+
+
+# ============================================================
+# MODELOS DE EQUIPO — EDITAR
+# ============================================================
+@login_required
+@require_admin_or_super()
+def device_model_edit(request, model_id):
+    """
+    Edita un modelo de equipo existente.
+
+    Si el modelo ya tiene equipos asociados, el campo `vendor` se
+    muestra deshabilitado (para no romper la coherencia con
+    `Device.vendor`).
+    """
+    obj = get_object_or_404(DeviceModel, pk=model_id)
+
+    if request.method == "POST":
+        form = DeviceModelForm(request.POST, instance=obj)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f"Modelo '{obj.name}' actualizado.")
+            return redirect("inventario:device_model_list")
+    else:
+        form = DeviceModelForm(instance=obj)
+
+    return render(request, "inventario/device_model_form.html", {
+        "form": form,
+        "model_obj": obj,
+        "title": f"Editar: {obj.vendor} - {obj.name}",
+        "is_edit": True,
+        "devices_count": obj.devices.count(),
+    })
+
+
+# ============================================================
+# MODELOS DE EQUIPO — ELIMINAR
+# ============================================================
+@login_required
+@require_admin_or_super()
+def device_model_delete(request, model_id):
+    """
+    Elimina un modelo (con confirmación).
+
+    Regla de negocio: si hay equipos usando el modelo, **se bloquea**
+    la eliminación. Se sugiere desactivarlo en su lugar (soft delete).
+    """
+    obj = get_object_or_404(DeviceModel, pk=model_id)
+    devices_count = obj.devices.count()
+
+    if request.method == "POST":
+        if devices_count > 0:
+            messages.error(
+                request,
+                f"No se puede eliminar: hay {devices_count} equipo(s) "
+                "que usan este modelo. Desactívalo en su lugar.",
+            )
+            return redirect(
+                "inventario:device_model_edit", model_id=obj.id
+            )
+
+        name = obj.name
+        obj.delete()
+        messages.success(request, f"Modelo '{name}' eliminado.")
+        return redirect("inventario:device_model_list")
+
+    return render(request, "inventario/device_model_confirm_delete.html", {
+        "model_obj": obj,
+        "devices_count": devices_count,
+    })
+
+
+# ============================================================
+# MODELOS DE EQUIPO — TOGGLE ACTIVO/INACTIVO
+# ============================================================
+@login_required
+@require_admin_or_super()
+def device_model_toggle(request, model_id):
+    """
+    Activa o desactiva un modelo (POST).
+
+    Es útil para retirar un modelo sin perderlo ni eliminar sus
+    equipos asociados.
+    """
+    if request.method != "POST":
+        return redirect("inventario:device_model_list")
+
+    obj = get_object_or_404(DeviceModel, pk=model_id)
+    obj.active = not obj.active
+    obj.save(update_fields=["active", "updated_at"])
+
+    state = "activado" if obj.active else "desactivado"
+    messages.success(request, f"Modelo '{obj.name}' {state}.")
+    return redirect(
+        request.META.get("HTTP_REFERER", "inventario:device_model_list")
+    )
