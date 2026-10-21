@@ -94,6 +94,11 @@
 // ============================================================
 // HELPERS
 // ============================================================
+/**
+ * Formatea un valor en bps a una unidad legible.
+ * @param {number|null} v - Valor en bps.
+ * @returns {string} - Cadena formateada (ej: "12.34 Mbps").
+ */
 function formatBps(v) {
     if (v === null || v === undefined) return '—';
     if (v >= 1e9) return (v / 1e9).toFixed(2) + ' Gbps';
@@ -102,6 +107,11 @@ function formatBps(v) {
     return v.toFixed(0) + ' bps';
 }
 
+/**
+ * Formatea segundos de uptime a "Xd Yh Zm".
+ * @param {number|null} seconds - Segundos.
+ * @returns {string} - Cadena formateada.
+ */
 function formatUptime(seconds) {
     if (seconds === null || seconds === undefined) return '—';
     const days = Math.floor(seconds / 86400);
@@ -112,6 +122,11 @@ function formatUptime(seconds) {
     return `${mins}m`;
 }
 
+/**
+ * Devuelve un tiempo relativo ("hace 5s", "hace 3m", etc.).
+ * @param {string|null} isoTs - Timestamp ISO.
+ * @returns {string} - Tiempo relativo.
+ */
 function relativeTime(isoTs) {
     if (!isoTs) return '—';
     const d = new Date(isoTs);
@@ -123,6 +138,11 @@ function relativeTime(isoTs) {
     return `hace ${Math.floor(diff / 86400)}d`;
 }
 
+/**
+ * Devuelve el badge HTML para un rol de equipo.
+ * @param {string} role - core, distribution, access, cpe.
+ * @returns {string} - HTML del badge.
+ */
 function roleBadge(role) {
     const classes = {
         'core': 'bg-danger',
@@ -141,6 +161,11 @@ function roleBadge(role) {
             </span>`;
 }
 
+/**
+ * Escapa caracteres HTML peligrosos.
+ * @param {string|null} s - Texto a escapar.
+ * @returns {string} - Texto seguro para HTML.
+ */
 function escapeHtml(s) {
     if (s === null || s === undefined) return '';
     return String(s)
@@ -151,7 +176,11 @@ function escapeHtml(s) {
         .replace(/'/g, '&#039;');
 }
 
-// Devuelve clase de color según porcentaje de utilización
+/**
+ * Devuelve la clase de color según el porcentaje de utilización.
+ * @param {number|null} pct - Porcentaje.
+ * @returns {string} - Clase Bootstrap (bg-success, bg-warning, etc.).
+ */
 function utilColor(pct) {
     if (pct === null || pct === undefined) return 'bg-secondary';
     if (pct > 85) return 'bg-danger';
@@ -161,8 +190,14 @@ function utilColor(pct) {
 }
 
 // ============================================================
-// BLOQUE: RADIOENLACE (solo si is_wireless_link)
+// BLOQUE: RADIOENLACE (wireless_info existente)
 // ============================================================
+/**
+ * Renderiza el bloque de "Radioenlace" (utilización de enlace
+ * basada en tráfico, ya existente).
+ * @param {object|null} wireless - Objeto wireless_info.
+ * @returns {string} - HTML del bloque.
+ */
 function renderWirelessBlock(wireless) {
     if (!wireless) return '';
 
@@ -212,10 +247,97 @@ function renderWirelessBlock(wireless) {
 }
 
 // ============================================================
-// BLOQUE: CORE HEALTH (solo si has_health_metrics)
+// BLOQUE: RADIOFRECUENCIA (NUEVO)
 // ============================================================
+/**
+ * Renderiza el bloque de radiofrecuencia para equipos radio-enlace.
+ * Muestra frecuencia, capacidad RX/TX, señal, ruido, CCQ y clientes.
+ * @param {object} radio - Objeto con métricas de radio.
+ * @param {array} availableMetrics - Lista de métricas disponibles.
+ * @returns {string} - HTML del bloque.
+ */
+function renderRadioBlock(radio, availableMetrics) {
+    if (!radio || Object.keys(radio).length === 0) {
+        return `
+            <div class="mb-3 pb-3 border-bottom">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="text-muted small text-uppercase fw-bold">
+                        <i class="bi bi-broadcast-pin text-info"></i> Radiofrecuencia
+                    </span>
+                </div>
+                <div class="text-muted small fst-italic">Sin datos recientes</div>
+            </div>
+        `;
+    }
+
+    const freq = radio.freq_mhz
+        ? radio.freq_mhz.toFixed(0) + ' MHz' : '—';
+    const capRx = formatBps(radio.capacity_rx_bps);
+    const capTx = formatBps(radio.capacity_tx_bps);
+    const signal = radio.signal_dbm != null
+        ? radio.signal_dbm.toFixed(0) + ' dBm' : '—';
+    const noise = radio.noise_dbm != null
+        ? radio.noise_dbm.toFixed(0) + ' dBm' : '—';
+    const ccq = radio.ccq_pct != null
+        ? radio.ccq_pct.toFixed(0) + '%' : '—';
+    const sta = radio.sta_count != null ? radio.sta_count : '—';
+
+    // Colores según valores
+    const signalCls = radio.signal_dbm > -60 ? 'text-success' :
+                      radio.signal_dbm > -75 ? 'text-warning' : 'text-danger';
+    const ccqCls = radio.ccq_pct >= 90 ? 'text-success' :
+                   radio.ccq_pct >= 70 ? 'text-warning' : 'text-danger';
+
+    return `
+        <div class="mb-3 pb-3 border-bottom">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="text-muted small text-uppercase fw-bold">
+                    <i class="bi bi-broadcast-pin text-info"></i> Radiofrecuencia
+                </span>
+                <small class="text-muted">${freq}</small>
+            </div>
+            <div class="row g-2 small mb-2">
+                <div class="col-4">
+                    <div class="text-muted">Capacidad RX</div>
+                    <div class="fw-bold text-success">↓ ${capRx}</div>
+                </div>
+                <div class="col-4">
+                    <div class="text-muted">Capacidad TX</div>
+                    <div class="fw-bold text-warning">↑ ${capTx}</div>
+                </div>
+                <div class="col-4">
+                    <div class="text-muted">Clientes</div>
+                    <div class="fw-bold">${sta}</div>
+                </div>
+            </div>
+            <div class="row g-2 small">
+                <div class="col-4">
+                    <div class="text-muted">Señal</div>
+                    <div class="fw-bold ${signalCls}">${signal}</div>
+                </div>
+                <div class="col-4">
+                    <div class="text-muted">Ruido</div>
+                    <div class="fw-bold">${noise}</div>
+                </div>
+                <div class="col-4">
+                    <div class="text-muted">CCQ</div>
+                    <div class="fw-bold ${ccqCls}">${ccq}</div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// ============================================================
+// BLOQUE: CORE HEALTH
+// ============================================================
+/**
+ * Renderiza el bloque de Core Health (CPU, memoria, temperatura,
+ * uptime).
+ * @param {object} device - Objeto device completo.
+ * @returns {string} - HTML del bloque.
+ */
 function renderHealthBlock(device) {
-    // Si el equipo no tiene métricas de chasis disponibles → no mostrar
     if (!device.has_health_metrics) {
         return '';
     }
@@ -223,7 +345,6 @@ function renderHealthBlock(device) {
     const health = device.health;
     const available = device.available_health_metrics || [];
 
-    // Si no hay datos aún, mostrar placeholder
     if (!health) {
         return `
             <div class="mb-3 pb-3 border-bottom">
@@ -237,7 +358,6 @@ function renderHealthBlock(device) {
         `;
     }
 
-    // Construir columnas solo para las métricas disponibles
     const cells = [];
 
     if (available.includes('cpu_pct')) {
@@ -301,6 +421,11 @@ function renderHealthBlock(device) {
 // ============================================================
 // BLOQUE: ICMP
 // ============================================================
+/**
+ * Renderiza el bloque de ICMP (estado, latencia, pérdida).
+ * @param {object|null} icmp - Objeto con datos ICMP.
+ * @returns {string} - HTML del bloque.
+ */
 function renderIcmpBlock(icmp) {
     if (!icmp) {
         return `
@@ -354,8 +479,13 @@ function renderIcmpBlock(icmp) {
 }
 
 // ============================================================
-// BLOQUE: TRÁFICO (tabla por interfaz)
+// BLOQUE: TRÁFICO
 // ============================================================
+/**
+ * Renderiza el bloque de tráfico SNMP por interfaz.
+ * @param {object} device - Objeto device.
+ * @returns {string} - HTML del bloque.
+ */
 function renderTrafficBlock(device) {
     const traffic = device.traffic || [];
 
@@ -431,6 +561,11 @@ function renderTrafficBlock(device) {
 // ============================================================
 // BLOQUE: TCP
 // ============================================================
+/**
+ * Renderiza el bloque de puertos TCP.
+ * @param {object} device - Objeto device.
+ * @returns {string} - HTML del bloque.
+ */
 function renderTcpBlock(device) {
     const tcp = device.tcp || [];
     if (tcp.length === 0) return '';
@@ -458,8 +593,16 @@ function renderTcpBlock(device) {
 // ============================================================
 // RENDER DE TARJETA POR EQUIPO
 // ============================================================
+/**
+ * Renderiza la tarjeta completa de un equipo.
+ * @param {object} device - Objeto device del API.
+ * @returns {string} - HTML de la tarjeta.
+ */
 function renderDeviceCard(device) {
     const wirelessBlock = renderWirelessBlock(device.wireless_info);
+    const radioBlock = device.is_wireless_link
+        ? renderRadioBlock(device.radio, device.available_radio_metrics)
+        : '';
     const icmpBlock = renderIcmpBlock(device.icmp);
     const trafficBlock = renderTrafficBlock(device);
     const healthBlock = renderHealthBlock(device);
@@ -496,6 +639,7 @@ function renderDeviceCard(device) {
                 </div>
                 <div class="card-body">
                     ${wirelessBlock}
+                    ${radioBlock}
                     ${icmpBlock}
                     ${trafficBlock}
                     ${healthBlock}
@@ -511,6 +655,10 @@ function renderDeviceCard(device) {
 // ============================================================
 let refreshTimer = null;
 
+/**
+ * Carga los datos en vivo desde el endpoint JSON.
+ * @param {boolean} manual - Si es True, muestra spinner en el botón.
+ */
 async function loadLiveData(manual = false) {
     const btn = document.getElementById('btn-reload');
     if (manual && btn) {
@@ -520,7 +668,7 @@ async function loadLiveData(manual = false) {
 
     try {
         const response = await fetch("{% url 'monitoreo:devices_live' %}", {
-            credentials: 'same-origin',  // Enviar cookies de sesión
+            credentials: 'same-origin',
             headers: {
                 'Accept': 'application/json',
                 'X-Requested-With': 'XMLHttpRequest',
@@ -549,7 +697,6 @@ async function loadLiveData(manual = false) {
         document.getElementById('last-update').textContent =
             ts.toLocaleTimeString('es-VE');
 
-        // Log del debug (útil para diagnosticar acceso remoto)
         if (data._debug) {
             console.debug('[Live] Snapshot:', data._debug);
         }
@@ -564,11 +711,17 @@ async function loadLiveData(manual = false) {
     }
 }
 
+/**
+ * Inicia el auto-refresh cada 10 segundos.
+ */
 function startAutoRefresh() {
     if (refreshTimer) clearInterval(refreshTimer);
     refreshTimer = setInterval(() => loadLiveData(false), 10000);
 }
 
+/**
+ * Detiene el auto-refresh.
+ */
 function stopAutoRefresh() {
     if (refreshTimer) {
         clearInterval(refreshTimer);
@@ -579,11 +732,18 @@ function stopAutoRefresh() {
 // ============================================================
 // DISCOVERY GLOBAL
 // ============================================================
+/**
+ * Abre el modal de confirmación para ejecutar discovery en todos
+ * los equipos.
+ */
 function runDiscoveryAll() {
     const modal = new bootstrap.Modal(document.getElementById('discoveryModal'));
     modal.show();
 }
 
+/**
+ * Ejecuta el discovery en todos los equipos y muestra el resultado.
+ */
 async function confirmDiscovery() {
     const modalEl = document.getElementById('discoveryModal');
     const modal = bootstrap.Modal.getInstance(modalEl);
@@ -627,6 +787,28 @@ async function confirmDiscovery() {
         btn.disabled = false;
         btn.innerHTML = '<i class="bi bi-arrow-repeat"></i> Discovery Interfaces';
     }
+}
+
+/**
+ * Obtiene el valor de una cookie por nombre.
+ * @param {string} name - Nombre de la cookie.
+ * @returns {string|null} - Valor o null.
+ */
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(
+                    cookie.substring(name.length + 1)
+                );
+                break;
+            }
+        }
+    }
+    return cookieValue;
 }
 
 // ============================================================

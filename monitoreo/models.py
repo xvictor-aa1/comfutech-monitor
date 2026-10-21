@@ -76,6 +76,7 @@ class MonitorStatus(models.Model):
     last_traffic_run = models.DateTimeField(null=True, blank=True)
     last_health_run = models.DateTimeField(null=True, blank=True)
     last_icmp_run = models.DateTimeField(null=True, blank=True)
+    last_radio_run = models.DateTimeField(null=True, blank=True)
 
     last_error = models.TextField(null=True, blank=True)
 

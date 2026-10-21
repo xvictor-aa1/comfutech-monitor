@@ -3,14 +3,10 @@
 Lectura de las últimas métricas desde InfluxDB.
 
 Optimizaciones clave:
-  - Un ÚNICO cliente InfluxDB compartido (no uno por consulta).
+  - Un ÚNICO cliente InfluxDB compartido.
   - Caché en memoria (TTL configurable) para el snapshot completo.
-  - Errores silenciosos: si InfluxDB falla, devuelve dicts vacíos
-    en lugar de lanzar excepción.
-  - Timeout holgado (10s) por si InfluxDB está bajo carga.
-
-Con esto, aunque haya 10 clientes remotos consultando al mismo tiempo,
-solo se hacen 4 queries reales por cada TTL al servidor InfluxDB.
+  - Errores silenciosos: si InfluxDB falla, devuelve dicts vacíos.
+  - Timeout holgado (10s).
 """
 import atexit
 import logging
@@ -316,6 +312,44 @@ def _query_last_tcp(client, bucket: str) -> dict:
         return {}
 
 
+def _query_last_radio(client, bucket: str) -> dict:
+    """
+    Últimos valores de radiofrecuencia por dispositivo.
+
+    Returns:
+        dict: {device_name: {freq_mhz, capacity_rx_kbps, ..., ts}}
+    """
+    try:
+        qapi = client.query_api()
+        flux = f'''
+        from(bucket: "{bucket}")
+          |> range(start: {LOOKBACK_RANGE})
+          |> filter(fn: (r) => r._measurement == "radio")
+          |> last()
+        '''
+        records = []
+        for table in qapi.query(flux):
+            records.extend(table.records)
+
+        result = {}
+        for r in records:
+            device = r.values.get("device")
+            field = r.get_field()
+            value = r.get_value()
+            ts = r.get_time()
+
+            if device not in result:
+                result[device] = {"ts": ts}
+            result[device][field] = value
+            if ts and (not result[device].get("ts") or ts > result[device]["ts"]):
+                result[device]["ts"] = ts
+
+        return result
+    except Exception as e:
+        log.warning("Error consultando radio en InfluxDB: %s", e)
+        return {}
+
+
 # ============================================================
 # SNAPSHOT CON CACHÉ
 # ============================================================
@@ -329,7 +363,8 @@ def get_live_snapshot() -> dict:
     Si InfluxDB falla o no está configurado, devuelve dicts vacíos.
 
     Returns:
-        dict: {"icmp": {}, "traffic": {}, "health": {}, "tcp": {}}
+        dict: {"icmp": {}, "traffic": {}, "health": {}, "tcp": {},
+               "radio": {}}
     """
     global _snapshot_cache, _snapshot_cache_time
 
@@ -342,7 +377,9 @@ def get_live_snapshot() -> dict:
     # Construir nuevo snapshot
     client = _get_client()
     if client is None:
-        empty = {"icmp": {}, "traffic": {}, "health": {}, "tcp": {}}
+        empty = {
+            "icmp": {}, "traffic": {}, "health": {}, "tcp": {}, "radio": {},
+        }
         with _snapshot_lock:
             _snapshot_cache = empty
             _snapshot_cache_time = now
@@ -356,6 +393,7 @@ def get_live_snapshot() -> dict:
         "traffic": _query_last_traffic(client, bucket),
         "health": _query_last_health(client, bucket),
         "tcp": _query_last_tcp(client, bucket),
+        "radio": _query_last_radio(client, bucket),
     }
 
     with _snapshot_lock:

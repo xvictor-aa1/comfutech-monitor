@@ -296,6 +296,57 @@ def write_tcp(
     return _write_point(point)
 
 
+def write_radio(
+    device_name: str,
+    ip: str,
+    role: Optional[str],
+    vendor: Optional[str],
+    metrics: dict,
+    timestamp,
+) -> bool:
+    """
+    Escribe un punto del measurement `radio`.
+
+    Args:
+        device_name, ip, role, vendor: tags.
+        metrics: dict con claves de radio (freq_mhz,
+                 capacity_rx_kbps, capacity_tx_kbps, noise_dbm,
+                 signal_dbm, ccq_pct, tx_rate_mbps, rx_rate_mbps,
+                 sta_count).
+        timestamp: datetime UTC naive.
+
+    Returns:
+        bool: True si se escribió al menos un field.
+    """
+    point = (
+        Point("radio")
+        .tag("device", device_name or "")
+        .tag("ip", ip or "")
+        .tag("role", role or "access")
+        .tag("vendor", vendor or "generic")
+    )
+    wrote = False
+    for key in (
+        "freq_mhz",
+        "capacity_rx_kbps",
+        "capacity_tx_kbps",
+        "noise_dbm",
+        "signal_dbm",
+        "ccq_pct",
+        "tx_rate_mbps",
+        "rx_rate_mbps",
+        "sta_count",
+    ):
+        v = metrics.get(key)
+        if v is not None:
+            point = point.field(key, float(v))
+            wrote = True
+
+    if not wrote:
+        return False
+    return _write_point(point.time(timestamp))
+
+
 # ============================================================
 # CIERRE AUTOMÁTICO AL SALIR
 # ============================================================

@@ -72,7 +72,7 @@
                         <div class="text-danger small mt-1">{{ form.name.errors.0 }}</div>
                         {% endif %}
                         <div class="form-text">
-                            Ej: <em>RB4011iGS+</em>, <em>AirMax LiteBeam M5</em>,
+                            Ej: <em>LiteAP GPS</em>, <em>RB4011iGS+</em>,
                             <em>ePMP 1000</em>.
                         </div>
                     </div>
@@ -95,8 +95,8 @@
                             <span class="text-muted small d-block">
                                 Marca si es un equipo de radio-enlace
                                 (AirMax, Cambium, Mimosa, etc.). Habilita
-                                el bloque de <em>utilización de enlace</em>
-                                en el monitoreo en vivo.
+                                el bloque de <em>radiofrecuencia</em> en
+                                el monitoreo en vivo.
                             </span>
                         </label>
                     </div>
@@ -136,90 +136,116 @@
                         sobrescribir.
                     </div>
 
-                    <!-- CPU -->
-                    <div class="mb-3">
-                        <label class="form-label" for="{{ form.oid_cpu_pct.id_for_label }}">
-                            {{ form.oid_cpu_pct.label }}
-                        </label>
-                        {{ form.oid_cpu_pct }}
-                        {% if form.oid_cpu_pct.errors %}
-                        <div class="text-danger small mt-1">{{ form.oid_cpu_pct.errors.0 }}</div>
-                        {% endif %}
-                        <div class="form-text">{{ form.oid_cpu_pct.help_text }}</div>
-                    </div>
-
-                    <!-- Memoria -->
-                    <fieldset class="border rounded p-3 mb-3">
-                        <legend class="float-none w-auto px-2 fs-6 text-muted">
-                            <i class="bi bi-memory"></i> Memoria
-                        </legend>
-
-                        <div class="row g-2">
-                            <div class="col-md-6">
-                                <label class="form-label" for="{{ form.oid_mem_pct.id_for_label }}">
-                                    {{ form.oid_mem_pct.label }}
-                                </label>
-                                {{ form.oid_mem_pct }}
-                                {% if form.oid_mem_pct.errors %}
-                                <div class="text-danger small mt-1">{{ form.oid_mem_pct.errors.0 }}</div>
-                                {% endif %}
-                                <div class="form-text">{{ form.oid_mem_pct.help_text }}</div>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label" for="{{ form.oid_mem_free.id_for_label }}">
-                                    {{ form.oid_mem_free.label }}
-                                </label>
-                                {{ form.oid_mem_free }}
-                                {% if form.oid_mem_free.errors %}
-                                <div class="text-danger small mt-1">{{ form.oid_mem_free.errors.0 }}</div>
-                                {% endif %}
-                                <div class="form-text">{{ form.oid_mem_free.help_text }}</div>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label" for="{{ form.oid_mem_used.id_for_label }}">
-                                    {{ form.oid_mem_used.label }}
-                                </label>
-                                {{ form.oid_mem_used }}
-                                {% if form.oid_mem_used.errors %}
-                                <div class="text-danger small mt-1">{{ form.oid_mem_used.errors.0 }}</div>
-                                {% endif %}
-                                <div class="form-text">{{ form.oid_mem_used.help_text }}</div>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label" for="{{ form.oid_mem_size.id_for_label }}">
-                                    {{ form.oid_mem_size.label }}
-                                </label>
-                                {{ form.oid_mem_size }}
-                                {% if form.oid_mem_size.errors %}
-                                <div class="text-danger small mt-1">{{ form.oid_mem_size.errors.0 }}</div>
-                                {% endif %}
-                                <div class="form-text">{{ form.oid_mem_size.help_text }}</div>
+                    <!-- Acordeón para chasis y radio -->
+                    <div class="accordion mb-3" id="accordionOids">
+                        <!-- Sección de chasis -->
+                        <div class="accordion-item">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button" type="button"
+                                        data-bs-toggle="collapse"
+                                        data-bs-target="#collapseChasis">
+                                    <i class="bi bi-cpu me-2"></i>
+                                    OIDs de Chasis (CPU, Mem, Temp)
+                                </button>
+                            </h2>
+                            <div id="collapseChasis"
+                                 class="accordion-collapse collapse show"
+                                 data-bs-parent="#accordionOids">
+                                <div class="accordion-body">
+                                    {% for field in form %}
+                                        {% if field.name in "oid_cpu_pct oid_mem_pct oid_mem_used oid_mem_size oid_mem_free oid_temp_c oid_uptime" %}
+                                        <div class="mb-3">
+                                            <label class="form-label"
+                                                   for="{{ field.id_for_label }}">
+                                                {{ field.label }}
+                                            </label>
+                                            {{ field }}
+                                            {% if field.errors %}
+                                            <div class="text-danger small mt-1">
+                                                {{ field.errors.0 }}
+                                            </div>
+                                            {% endif %}
+                                            {% if field.help_text %}
+                                            <div class="form-text">{{ field.help_text }}</div>
+                                            {% endif %}
+                                        </div>
+                                        {% endif %}
+                                    {% endfor %}
+                                </div>
                             </div>
                         </div>
-                    </fieldset>
 
-                    <!-- Temperatura -->
-                    <div class="mb-3">
-                        <label class="form-label" for="{{ form.oid_temp_c.id_for_label }}">
-                            {{ form.oid_temp_c.label }}
-                        </label>
-                        {{ form.oid_temp_c }}
-                        {% if form.oid_temp_c.errors %}
-                        <div class="text-danger small mt-1">{{ form.oid_temp_c.errors.0 }}</div>
-                        {% endif %}
-                        <div class="form-text">{{ form.oid_temp_c.help_text }}</div>
+                        <!-- Sección de radiofrecuencia -->
+                        <div class="accordion-item">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed"
+                                        type="button"
+                                        data-bs-toggle="collapse"
+                                        data-bs-target="#collapseRadio">
+                                    <i class="bi bi-broadcast-pin me-2"></i>
+                                    OIDs de Radiofrecuencia
+                                </button>
+                            </h2>
+                            <div id="collapseRadio"
+                                 class="accordion-collapse collapse"
+                                 data-bs-parent="#accordionOids">
+                                <div class="accordion-body">
+                                    <div class="alert alert-warning small mb-3">
+                                        <i class="bi bi-exclamation-triangle"></i>
+                                        Solo aplica a equipos de radioenlace.
+                                        Si los dejas vacíos, se usarán los
+                                        OIDs por defecto del fabricante.
+                                    </div>
+                                    {% for field in form %}
+                                        {% if field.name in "oid_freq_mhz oid_capacity_rx_kbps oid_capacity_tx_kbps oid_noise_dbm oid_signal_dbm oid_ccq_pct oid_tx_rate_mbps oid_rx_rate_mbps oid_sta_count" %}
+                                        <div class="mb-3">
+                                            <label class="form-label"
+                                                   for="{{ field.id_for_label }}">
+                                                {{ field.label }}
+                                            </label>
+                                            {{ field }}
+                                            {% if field.errors %}
+                                            <div class="text-danger small mt-1">
+                                                {{ field.errors.0 }}
+                                            </div>
+                                            {% endif %}
+                                            {% if field.help_text %}
+                                            <div class="form-text">{{ field.help_text }}</div>
+                                            {% endif %}
+                                        </div>
+                                        {% endif %}
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
-                    <!-- Uptime -->
-                    <div class="mb-0">
-                        <label class="form-label" for="{{ form.oid_uptime.id_for_label }}">
-                            {{ form.oid_uptime.label }}
-                        </label>
-                        {{ form.oid_uptime }}
-                        {% if form.oid_uptime.errors %}
-                        <div class="text-danger small mt-1">{{ form.oid_uptime.errors.0 }}</div>
-                        {% endif %}
-                        <div class="form-text">{{ form.oid_uptime.help_text }}</div>
+                    <!-- Editor JSON avanzado -->
+                    <div class="border rounded p-3 mt-3">
+                        <div class="form-check form-switch mb-2">
+                            <input class="form-check-input" type="checkbox"
+                                   id="toggle_json_editor"
+                                   onchange="document.getElementById('json_editor_section').classList.toggle('d-none', !this.checked)">
+                            <label class="form-check-label small fw-bold"
+                                   for="toggle_json_editor">
+                                <i class="bi bi-code-slash"></i>
+                                Mostrar editor JSON avanzado
+                            </label>
+                        </div>
+                        <div id="json_editor_section" class="d-none">
+                            <div class="alert alert-warning small py-2 mb-2">
+                                <i class="bi bi-exclamation-triangle"></i>
+                                Si rellenas este campo, <strong>sobrescribe</strong>
+                                los OIDs individuales de arriba.
+                                Úsalo para pegar configuraciones completas.
+                            </div>
+                            {{ form.oids_json }}
+                            {% if form.oids_json.errors %}
+                            <div class="text-danger small mt-1">
+                                {{ form.oids_json.errors.0 }}
+                            </div>
+                            {% endif %}
+                        </div>
                     </div>
 
                 </div>

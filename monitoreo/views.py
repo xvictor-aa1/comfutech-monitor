@@ -28,6 +28,7 @@ from inventario.models import Device, DeviceModel
 from .models import DiscoveryJob, MonitorStatus
 from .services.chassis_oids import (
     get_available_health_metrics,
+    get_available_radio_metrics,
     has_meaningful_health_metrics,
 )
 from .services.discovery import discover_interfaces
@@ -41,7 +42,15 @@ log = logging.getLogger(__name__)
 @login_required
 @require_admin_or_super()
 def run_discovery(request, device_id):
-    """Ejecuta el discovery SNMP para un equipo específico."""
+    """
+    Ejecuta el discovery SNMP para un equipo específico.
+
+    Args:
+        device_id: ID del equipo.
+
+    Returns:
+        HttpResponse: redirección a la página de interfaces.
+    """
     device = get_object_or_404(Device, pk=device_id)
 
     if request.method != "POST":
@@ -96,7 +105,12 @@ def run_discovery(request, device_id):
 @login_required
 @require_admin_or_super()
 def run_discovery_all(request):
-    """Ejecuta el discovery en todos los equipos activos (endpoint JSON)."""
+    """
+    Ejecuta el discovery en todos los equipos activos (endpoint JSON).
+
+    Returns:
+        JsonResponse: resumen de la operación con resultados por equipo.
+    """
     if request.method != "POST":
         return JsonResponse({"error": "Método no permitido"}, status=405)
 
@@ -149,7 +163,15 @@ def run_discovery_all(request):
 # ============================================================
 @login_required
 def discovery_history(request, device_id):
-    """Muestra el historial de ejecuciones del discovery de un equipo."""
+    """
+    Muestra el historial de ejecuciones del discovery de un equipo.
+
+    Args:
+        device_id: ID del equipo.
+
+    Returns:
+        HttpResponse: renderiza `discovery_history.html`.
+    """
     device = get_object_or_404(Device, pk=device_id)
     jobs = DiscoveryJob.objects.filter(device=device).select_related("triggered_by")
 
@@ -226,6 +248,9 @@ def monitor_status(request):
       - Último heartbeat, host y PID.
       - Intervalos configurados de cada poller.
       - Última ejecución de cada poller.
+
+    Returns:
+        HttpResponse: renderiza `monitor_status.html`.
     """
     status = MonitorStatus.objects.filter(id=1).first()
     cfg = SystemConfig.get()
@@ -251,13 +276,15 @@ def monitor_live(request):
     Página de Monitoreo en vivo.
 
     Muestra las tarjetas con los últimos valores reportados por los
-    pollers: ICMP, SNMP tráfico, Core Health y estado TCP.
+    pollers: ICMP, SNMP tráfico, Core Health, radiofrecuencia y
+    estado TCP.
 
     Solo renderiza el template; los datos los pide el frontend
     vía AJAX a `monitor_devices_live`.
+
+    Returns:
+        HttpResponse: renderiza `monitor_live.html`.
     """
-    
-    # Equipos con sus modelos precargados
     devices = (
         Device.objects
         .filter(active=True)
@@ -265,7 +292,6 @@ def monitor_live(request):
         .prefetch_related("interfaces")
     )
 
-    # Estadísticas para el header
     total_devices = devices.count()
     monitored_count = sum(
         1 for d in devices if any(i.monitored for i in d.interfaces.all())
@@ -287,10 +313,11 @@ def monitor_devices_live(request):
     API JSON con los últimos valores de cada equipo.
 
     Características:
-      - Devuelve `has_health_metrics` (bool) y `available_health_metrics`
-        (list) para que el frontend decida si mostrar Core Health.
-      - Devuelve `is_wireless_link` (bool) y `wireless_info` (dict) con
-        la utilización y capacidad del radioenlace.
+      - Devuelve `has_health_metrics` (bool) y
+        `available_health_metrics` (list) para que el frontend decida
+        si mostrar Core Health.
+      - Devuelve `is_wireless_link` (bool), `available_radio_metrics`
+        (list) y `radio` (dict) con las métricas de radiofrecuencia.
       - Errores de InfluxDB devuelven listas vacías en lugar de 500.
       - Incluye un bloque `_debug` con contadores para diagnóstico.
 
@@ -300,7 +327,7 @@ def monitor_devices_live(request):
     from .services import influx_reader
 
     try:
-        # --- Equipos activos con modelo y interfaces precargadas ---
+        # --- Equipos activos con modelo e interfaces precargadas ---
         devices = list(
             Device.objects
             .filter(active=True)
@@ -314,6 +341,7 @@ def monitor_devices_live(request):
         traffic_data = snapshot.get("traffic", {})
         health_data = snapshot.get("health", {})
         tcp_data = snapshot.get("tcp", {})
+        radio_data = snapshot.get("radio", {})
 
         # --- Mapa de alias por dispositivo ---
         alias_map = {}
@@ -325,14 +353,16 @@ def monitor_devices_live(request):
 
         result = []
         for device in devices:
-            monitored_ifaces = [i for i in device.interfaces.all() if i.monitored]
+            monitored_ifaces = [
+                i for i in device.interfaces.all() if i.monitored
+            ]
 
             # --- Determinar si es radio-enlace ---
             is_wireless = bool(
                 device.device_model and device.device_model.is_wireless_link
             )
 
-            # --- Métricas de chasis disponibles para este equipo ---
+            # --- Métricas de chasis disponibles ---
             available_health = get_available_health_metrics(device)
             has_health = has_meaningful_health_metrics(device)
 
@@ -364,7 +394,6 @@ def monitor_devices_live(request):
                     })
 
             # --- Información extra para radioenlaces ---
-            # Se busca la interfaz con la mayor utilización para destacarla
             wireless_info = None
             if is_wireless and traffic_payload:
                 valid_traffic = [
@@ -403,6 +432,33 @@ def monitor_devices_live(request):
                         "is_open": t.get("is_open"),
                     })
 
+            # --- Radiofrecuencia (NUEVO) ---
+            radio_payload = {}
+            available_radio = get_available_radio_metrics(device)
+            if is_wireless and radio_data.get(device.name):
+                raw_radio = radio_data[device.name]
+                # Convertir capacidades de kbps a bps para la UI
+                for key in ("capacity_rx_kbps", "capacity_tx_kbps"):
+                    if key in raw_radio and raw_radio[key] is not None:
+                        radio_payload[key.replace("_kbps", "_bps")] = (
+                            raw_radio[key] * 1000
+                        )
+                # Copiar el resto de campos tal cual
+                for k in (
+                    "freq_mhz",
+                    "noise_dbm",
+                    "signal_dbm",
+                    "ccq_pct",
+                    "tx_rate_mbps",
+                    "rx_rate_mbps",
+                    "sta_count",
+                ):
+                    if k in raw_radio:
+                        radio_payload[k] = raw_radio[k]
+                # Timestamp
+                if raw_radio.get("ts"):
+                    radio_payload["ts"] = raw_radio["ts"].isoformat()
+
             result.append({
                 "id": device.id,
                 "name": device.name,
@@ -412,16 +468,19 @@ def monitor_devices_live(request):
                 "model": device.device_model.name if device.device_model else None,
                 "location": device.location,
                 "has_traffic": bool(monitored_ifaces),
-                # Flags nuevos:
+                # Flags de chasis:
                 "has_health_metrics": has_health,
                 "available_health_metrics": available_health,
+                # Flags de radio:
                 "is_wireless_link": is_wireless,
+                "available_radio_metrics": available_radio,
                 "wireless_info": wireless_info,
                 # Payloads:
                 "icmp": icmp_payload,
                 "traffic": traffic_payload,
                 "health": health_payload,
                 "tcp": tcp_payload,
+                "radio": radio_payload,
             })
 
         return JsonResponse({
@@ -433,6 +492,7 @@ def monitor_devices_live(request):
                 "count_traffic": len(traffic_data),
                 "count_health": len(health_data),
                 "count_tcp": len(tcp_data),
+                "count_radio": len(radio_data),
                 "client_ip": request.META.get("REMOTE_ADDR"),
                 "forwarded_for": request.META.get("HTTP_X_FORWARDED_FOR"),
             },

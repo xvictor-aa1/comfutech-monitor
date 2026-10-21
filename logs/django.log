@@ -1552,3 +1552,31 @@ INFO 2026-10-21 00:36:04 django.server [7524] "GET /static/css/style.css HTTP/1.
 WARNING 2026-10-21 00:36:08 django.request [7524] Not Found: /favicon.ico
 WARNING 2026-10-21 00:36:08 django.server [7524] "GET /favicon.ico HTTP/1.1" 404 8358
 INFO 2026-10-21 00:36:17 django.server [7524] "GET /equipos/modelos/ HTTP/1.1" 200 54888
+INFO 2026-10-21 15:45:37 django.utils.autoreload [7056] Watching for file changes with StatReloader
+WARNING 2026-10-21 15:46:26 django.security.SuspiciousSession [7056] Session data corrupted
+INFO 2026-10-21 15:46:28 django.server [7056] "GET / HTTP/1.1" 302 0
+WARNING 2026-10-21 15:46:32 django.security.SuspiciousSession [7056] Session data corrupted
+INFO 2026-10-21 15:46:43 django.server [7056] "GET /accounts/login/?next=/ HTTP/1.1" 200 21639
+WARNING 2026-10-21 15:47:30 django.security.SuspiciousSession [7056] Session data corrupted
+INFO 2026-10-21 15:47:45 django.server [7056] "POST /accounts/login/?next=/ HTTP/1.1" 302 0
+INFO 2026-10-21 15:47:48 django.server [7056] "GET / HTTP/1.1" 200 43053
+INFO 2026-10-21 15:48:30 django.server [7056] "GET /equipos/modelos/ HTTP/1.1" 200 55221
+INFO 2026-10-21 15:48:47 django.server [7056] "GET /equipos/modelos/nuevo/ HTTP/1.1" 200 53721
+INFO 2026-10-21 15:49:12 django.server [7056] - Broken pipe from ('127.0.0.1', 52305)
+INFO 2026-10-21 15:49:12 django.server [7056] - Broken pipe from ('127.0.0.1', 52272)
+INFO 2026-10-21 15:49:13 django.server [7056] - Broken pipe from ('127.0.0.1', 52308)
+INFO 2026-10-21 15:50:06 django.server [7056] "POST /equipos/modelos/nuevo/ HTTP/1.1" 302 0
+INFO 2026-10-21 15:50:07 django.server [7056] "GET /equipos/modelos/ HTTP/1.1" 200 62329
+INFO 2026-10-21 15:50:16 django.server [7056] "GET /equipos/modelos/7/editar/ HTTP/1.1" 200 55210
+INFO 2026-10-21 15:50:51 django.server [7056] "GET /equipos/modelos/ HTTP/1.1" 200 61948
+INFO 2026-10-21 15:51:03 django.server [7056] "GET /equipos/nuevo/ HTTP/1.1" 200 40932
+INFO 2026-10-21 15:51:05 django.server [7056] "GET /equipos/api/models/?vendor=Otro HTTP/1.1" 200 14
+INFO 2026-10-21 15:51:10 django.server [7056] "GET /equipos/ HTTP/1.1" 200 37052
+INFO 2026-10-21 15:51:24 django.server [7056] "GET /equipos/nuevo/ HTTP/1.1" 200 40932
+INFO 2026-10-21 15:51:25 django.server [7056] "GET /equipos/api/models/?vendor=Otro HTTP/1.1" 200 14
+INFO 2026-10-21 15:53:57 django.server [7056] "GET /equipos/api/models/?vendor=Ubiquiti HTTP/1.1" 200 130
+INFO 2026-10-21 15:55:13 django.server [7056] "POST /equipos/nuevo/ HTTP/1.1" 302 0
+INFO 2026-10-21 15:55:17 django.server [7056] "GET /equipos/2/ HTTP/1.1" 200 31110
+INFO 2026-10-21 15:57:38 django.server [7056] "GET /equipos/2/interfaces/ HTTP/1.1" 200 36101
+INFO 2026-10-21 15:58:58 django.server [7056] "POST /monitoreo/device/2/discover/ HTTP/1.1" 302 0
+INFO 2026-10-21 15:58:58 django.server [7056] "GET /equipos/2/interfaces/ HTTP/1.1" 200 36520

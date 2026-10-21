@@ -1,3 +1,6 @@
-*.env
-*prompt.txt
-*timezone_posix.sql
+.env
+prompt.txt
+timezone_posix.sql
+logs/django.log
+.vscode/settings.json
+logs/monitor.log

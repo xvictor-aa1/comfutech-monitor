@@ -1,17 +1,17 @@
 # monitoreo/services/chassis_oids.py
 """
-Diccionario de OIDs de chasis por fabricante + helpers de resolución.
+Diccionario de OIDs de chasis y radiofrecuencia por fabricante.
 
 Responsabilidades:
-  - Definir los OIDs por defecto de cada fabricante.
-  - Exponer `get_resolved_oids(device)` que prioriza los OIDs del modelo
-    del equipo sobre los del fabricante.
-  - Exponer `get_available_health_metrics(device)` que devuelve la lista
-    de métricas de chasis que REALMENTE se pueden consultar en ese equipo.
+  - Definir OIDs por defecto de chasis (CPU, memoria, temperatura).
+  - Definir OIDs por defecto de radiofrecuencia (frecuencia, capacidad
+    RX/TX, señal, ruido, CCQ, etc.) para fabricantes de radioenlaces.
+  - Exponer helpers para resolver qué OIDs usar en cada equipo,
+    priorizando los OIDs del modelo sobre los del fabricante.
 """
 
 # ============================================================
-# OIDs POR FABRICANTE
+# OIDs DE CHASIS (CPU, MEM, TEMP) - GENÉRICOS
 # ============================================================
 CHASSIS_OIDS = {
     "cisco": {
@@ -21,13 +21,9 @@ CHASSIS_OIDS = {
         "temp_c":   "1.3.6.1.4.1.9.9.13.1.3.1.3.1",
     },
     "mikrotik": {
-        # CPU: fallback propietario (MikroTik RouterOS 7 suele usar multi-core
-        # a través de MIKROTIK_CPU_OIDS, pero se mantiene como red de seguridad).
         "cpu_pct":  "1.3.6.1.4.1.14988.1.1.3.10.0",
-        # Memoria: OIDs estándar HOST-RESOURCES.
         "mem_used": "1.3.6.1.2.1.25.2.3.1.6.65536",
         "mem_size": "1.3.6.1.2.1.25.2.3.1.5.65536",
-        # Temperatura: índice 1 del health.
         "temp_c":   "1.3.6.1.4.1.14988.1.1.3.100.1.3.14",
         "uptime":   "1.3.6.1.2.1.1.3.0",
     },
@@ -37,19 +33,39 @@ CHASSIS_OIDS = {
         "temp_c":   "1.3.6.1.4.1.2011.5.25.31.1.1.1.1.11.1",
     },
     "ubiquiti": {
-        "cpu_pct":  "1.3.6.1.4.1.41112.1.4.5.1.4.1",
-        "mem_pct":  "1.3.6.1.4.1.41112.1.4.5.1.5.1",
-        "temp_c":   "1.3.6.1.4.1.41112.1.4.5.1.7.1",
+        # CPU y temperatura genéricos para equipos AirOS/AirMax
+        "cpu_pct":  "1.3.6.1.4.1.41112.1.4.8.3.0",
+        "temp_c":   "1.3.6.1.4.1.41112.1.4.8.4.0",
+        "mem_pct":  "1.3.6.1.4.1.41112.1.4.5.1.5.1",  # puede variar
     },
     "cambium": {
-        # Cambium expone CPU pero no memoria/temperatura de forma consistente.
         "cpu_pct":  "1.3.6.1.4.1.17713.21.2.1.64.0",
     },
     "generic": {
-        # Solo memoria genérica (HOST-RESOURCES).
         "mem_used": "1.3.6.1.2.1.25.2.3.1.6.1",
         "mem_size": "1.3.6.1.2.1.25.2.3.1.5.1",
     },
+}
+
+# ============================================================
+# OIDs DE RADIOFRECUENCIA (para radioenlaces)
+# ============================================================
+RADIO_OIDS = {
+    "ubiquiti": {
+        # Frecuencia de operación
+        "freq_mhz":         "1.3.6.1.4.1.41112.1.4.1.1.4",
+        # Capacidad de la estación (punto a punto / estación única)
+        "capacity_rx_kbps": "1.3.6.1.4.1.41112.1.4.7.1.18.1",
+        "capacity_tx_kbps": "1.3.6.1.4.1.41112.1.4.7.1.19.1",
+        # Estadísticas wireless (ubntWlStat)
+        "noise_dbm":        "1.3.6.1.4.1.41112.1.4.5.1.8.1",
+        "signal_dbm":       "1.3.6.1.4.1.41112.1.4.5.1.5.1",
+        "ccq_pct":          "1.3.6.1.4.1.41112.1.4.5.1.7.1",
+        "tx_rate_mbps":     "1.3.6.1.4.1.41112.1.4.5.1.9.1",
+        "rx_rate_mbps":     "1.3.6.1.4.1.41112.1.4.5.1.10.1",
+        "sta_count":        "1.3.6.1.4.1.41112.1.4.5.1.15.1",
+    },
+    # Otros fabricantes de radio pueden añadirse aquí.
 }
 
 # OIDs multi-core específicos de MikroTik RouterOS 7
@@ -74,7 +90,7 @@ CORE_ROLES = {"core", "distribution"}
 # ============================================================
 def get_resolved_oids(device) -> tuple:
     """
-    Devuelve los OIDs efectivos de un equipo y su vendor en minúsculas.
+    Devuelve los OIDs de chasis efectivos y el vendor en minúsculas.
 
     Prioridad:
       1. OIDs del modelo del equipo (`device.device_model.oids`).
@@ -102,6 +118,41 @@ def get_resolved_oids(device) -> tuple:
     oids_map = {k: v for k, v in oids_map.items() if v}
 
     return oids_map, vendor
+
+
+def get_resolved_radio_oids(device) -> dict:
+    """
+    Devuelve los OIDs de radiofrecuencia efectivos para un equipo.
+
+    Prioriza los OIDs personalizados del modelo (que pueden incluir
+    claves como 'freq_mhz', 'capacity_rx_kbps', etc.). Si el modelo
+    no define OIDs de radio, usa los del fabricante en `RADIO_OIDS`.
+
+    Args:
+        device: instancia de `inventario.models.Device`.
+
+    Returns:
+        dict: {clave_metrica: oid} solo con las métricas de radio
+              disponibles.
+    """
+    vendor = (device.vendor or "generic").lower()
+
+    # Construir el conjunto de claves de radio conocidas
+    radio_keys = set()
+    for v_oids in RADIO_OIDS.values():
+        radio_keys.update(v_oids.keys())
+
+    # Priorizar OIDs personalizados del modelo
+    if device.device_model and device.device_model.oids:
+        custom_radio = {
+            k: v for k, v in device.device_model.oids.items()
+            if k in radio_keys and v
+        }
+        if custom_radio:
+            return custom_radio
+
+    # Fallback a los OIDs del fabricante
+    return dict(RADIO_OIDS.get(vendor, {}))
 
 
 def get_available_health_metrics(device) -> list:
@@ -151,13 +202,26 @@ def get_available_health_metrics(device) -> list:
     return available
 
 
+def get_available_radio_metrics(device) -> list:
+    """
+    Devuelve la lista de métricas de radiofrecuencia disponibles
+    para el equipo, basándose en sus OIDs resueltos.
+
+    Args:
+        device: instancia de `inventario.models.Device`.
+
+    Returns:
+        list: claves de métricas de radio disponibles (p.ej.
+              ["freq_mhz", "capacity_rx_kbps", ...]).
+    """
+    radio_oids = get_resolved_radio_oids(device)
+    return list(radio_oids.keys())
+
+
 def has_meaningful_health_metrics(device) -> bool:
     """
     Devuelve True si el equipo tiene al menos UNA métrica de chasis
     que vale la pena mostrar en el dashboard (cpu, memoria o temperatura).
-
-    Se usa en las Cards del Monitoreo en vivo para decidir si mostrar
-    el bloque de Core Health.
 
     Args:
         device: instancia de `inventario.models.Device`.
