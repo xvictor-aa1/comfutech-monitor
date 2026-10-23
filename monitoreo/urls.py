@@ -28,4 +28,5 @@ urlpatterns = [
     # Discovery por equipo
     path("device/<int:device_id>/discover/", views.run_discovery, name="run_discovery"),
     path("device/<int:device_id>/history/", views.discovery_history, name="discovery_history"),
+    path("device/<int:device_id>/discover-ap/", views.run_ap_discovery, name="run_ap_discovery"),
 ]

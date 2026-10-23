@@ -6,8 +6,8 @@ Características:
   - Cliente compartido (se recrea si cambia la configuración).
   - Escritura tolerante a fallos: NUNCA propaga excepciones a los
     pollers (se loguea a DEBUG y se devuelve False).
-  - Detección de config incompleta (URL o token vacíos).
   - Cierre automático con atexit.
+  - Measurements: traffic, health, icmp, tcp, radio.
 """
 import atexit
 import logging
@@ -307,16 +307,16 @@ def write_radio(
     """
     Escribe un punto del measurement `radio`.
 
+    Solo escribe los fields que existan en `metrics`. Si ninguno está
+    presente, no escribe nada.
+
     Args:
         device_name, ip, role, vendor: tags.
-        metrics: dict con claves de radio (freq_mhz,
-                 capacity_rx_kbps, capacity_tx_kbps, noise_dbm,
-                 signal_dbm, ccq_pct, tx_rate_mbps, rx_rate_mbps,
-                 sta_count).
+        metrics: dict con valores de RF.
         timestamp: datetime UTC naive.
 
     Returns:
-        bool: True si se escribió al menos un field.
+        bool: True si se escribió algo.
     """
     point = (
         Point("radio")
@@ -327,19 +327,76 @@ def write_radio(
     )
     wrote = False
     for key in (
-        "freq_mhz",
-        "capacity_rx_kbps",
-        "capacity_tx_kbps",
-        "noise_dbm",
-        "signal_dbm",
-        "ccq_pct",
-        "tx_rate_mbps",
-        "rx_rate_mbps",
-        "sta_count",
+        "radio_freq", "radio_txpower", "wl_signal", "wl_noise_floor",
+        "wl_ccq", "wl_tx_rate", "wl_rx_rate", "airmax_quality",
+        "airmax_capacity", "chan_width",
     ):
         v = metrics.get(key)
         if v is not None:
             point = point.field(key, float(v))
+            wrote = True
+    if not wrote:
+        return False
+    return _write_point(point.time(timestamp))
+
+
+def write_ap_client(
+    ap_device_name: str,
+    ap_ip: str,
+    client_mac: str,
+    client_ip: Optional[str],
+    client_essid: Optional[str],
+    if_index: Optional[int],
+    signal_dbm: Optional[float],
+    noise_dbm: Optional[float],
+    ccq_pct: Optional[float],
+    tx_rate_bps: Optional[float],
+    rx_rate_bps: Optional[float],
+    snr_db: Optional[float],
+    timestamp,
+) -> bool:
+    """
+    Escribe un punto del measurement `ap_clients`.
+
+    Cada cliente conectado al AP genera un punto por ciclo con sus
+    métricas en vivo. Tags permiten filtrar por AP y por cliente.
+
+    Args:
+        ap_device_name: nombre del AP (tag).
+        ap_ip: IP del AP (tag).
+        client_mac: MAC del cliente (tag, identificador principal).
+        client_ip: IP del cliente (tag).
+        client_essid: SSID (tag).
+        if_index: índice SNMP del cliente (tag).
+        signal_dbm, noise_dbm, ccq_pct: métricas (fields).
+        tx_rate_bps, rx_rate_bps: tasas en bps (fields).
+        snr_db: SNR calculado (field).
+        timestamp: datetime UTC.
+
+    Returns:
+        bool: True si se escribió.
+    """
+    point = (
+        Point("ap_clients")
+        .tag("ap_device", ap_device_name or "")
+        .tag("ap_ip", ap_ip or "")
+        .tag("client_mac", client_mac or "")
+        .tag("client_ip", client_ip or "")
+        .tag("essid", client_essid or "")
+        .tag("if_index", str(if_index) if if_index is not None else "")
+    )
+
+    wrote = False
+    for name, val in [
+        ("signal_dbm", signal_dbm),
+        ("noise_dbm", noise_dbm),
+        ("ccq_pct", ccq_pct),
+        ("tx_rate_bps", tx_rate_bps),
+        ("rx_rate_bps", rx_rate_bps),
+        ("snr_db", snr_db),
+    ]:
+        if val is not None:
+            point = point.field(name, float(val))
             wrote = True
 
     if not wrote:

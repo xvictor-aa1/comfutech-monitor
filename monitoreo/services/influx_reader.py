@@ -2,11 +2,16 @@
 """
 Lectura de las últimas métricas desde InfluxDB.
 
-Optimizaciones clave:
+Optimizaciones:
   - Un ÚNICO cliente InfluxDB compartido.
   - Caché en memoria (TTL configurable) para el snapshot completo.
-  - Errores silenciosos: si InfluxDB falla, devuelve dicts vacíos.
-  - Timeout holgado (10s).
+  - Errores silenciosos: si InfluxDB falla, devuelve dicts vacíos
+    en lugar de lanzar excepción.
+  - Timeout holgado (10s) por si InfluxDB está bajo carga, esto para
+    que aunque haya 10 clientes remotos consultando al mismo tiempo,
+    solo se hacen 4 queries reales por cada TTL al servidor InfluxDB.
+
+Measurements consultados: icmp, traffic, health, tcp, radio.
 """
 import atexit
 import logging
@@ -317,7 +322,10 @@ def _query_last_radio(client, bucket: str) -> dict:
     Últimos valores de radiofrecuencia por dispositivo.
 
     Returns:
-        dict: {device_name: {freq_mhz, capacity_rx_kbps, ..., ts}}
+        dict: {device_name: {radio_freq, radio_txpower, wl_signal,
+                              wl_noise_floor, wl_ccq, wl_tx_rate,
+                              wl_rx_rate, airmax_quality, airmax_capacity,
+                              chan_width, ts}}
     """
     try:
         qapi = client.query_api()
@@ -325,6 +333,16 @@ def _query_last_radio(client, bucket: str) -> dict:
         from(bucket: "{bucket}")
           |> range(start: {LOOKBACK_RANGE})
           |> filter(fn: (r) => r._measurement == "radio")
+          |> filter(fn: (r) => r._field == "radio_freq"
+                              or r._field == "radio_txpower"
+                              or r._field == "wl_signal"
+                              or r._field == "wl_noise_floor"
+                              or r._field == "wl_ccq"
+                              or r._field == "wl_tx_rate"
+                              or r._field == "wl_rx_rate"
+                              or r._field == "airmax_quality"
+                              or r._field == "airmax_capacity"
+                              or r._field == "chan_width")
           |> last()
         '''
         records = []
@@ -337,16 +355,78 @@ def _query_last_radio(client, bucket: str) -> dict:
             field = r.get_field()
             value = r.get_value()
             ts = r.get_time()
-
             if device not in result:
                 result[device] = {"ts": ts}
             result[device][field] = value
             if ts and (not result[device].get("ts") or ts > result[device]["ts"]):
                 result[device]["ts"] = ts
-
         return result
     except Exception as e:
         log.warning("Error consultando radio en InfluxDB: %s", e)
+        return {}
+
+
+def _query_last_ap_clients(client, bucket: str) -> dict:
+    """
+    Últimos valores de clientes AP por dispositivo AP.
+
+    Returns:
+        dict: {ap_device_name: [{
+            client_mac, client_ip, essid, if_index,
+            signal_dbm, noise_dbm, ccq_pct,
+            tx_rate_bps, rx_rate_bps, snr_db, ts
+        }, ...]}
+    """
+    try:
+        qapi = client.query_api()
+        flux = f'''
+        from(bucket: "{bucket}")
+          |> range(start: {LOOKBACK_RANGE})
+          |> filter(fn: (r) => r._measurement == "ap_clients")
+          |> filter(fn: (r) => r._field == "signal_dbm"
+                              or r._field == "noise_dbm"
+                              or r._field == "ccq_pct"
+                              or r._field == "tx_rate_bps"
+                              or r._field == "rx_rate_bps"
+                              or r._field == "snr_db")
+          |> last()
+        '''
+        records = []
+        for table in qapi.query(flux):
+            records.extend(table.records)
+
+        result = {}
+        for r in records:
+            ap = r.values.get("ap_device")
+            mac = r.values.get("client_mac")
+            if not ap or not mac:
+                continue
+            key = (ap, mac)
+            field = r.get_field()
+            value = r.get_value()
+            ts = r.get_time()
+
+            if ap not in result:
+                result[ap] = {}
+            if mac not in result[ap]:
+                result[ap][mac] = {
+                    "client_mac": mac,
+                    "client_ip": r.values.get("client_ip", ""),
+                    "essid": r.values.get("essid", ""),
+                    "if_index": r.values.get("if_index"),
+                    "ts": ts,
+                }
+            result[ap][mac][field] = value
+            if ts and (not result[ap][mac].get("ts") or ts > result[ap][mac]["ts"]):
+                result[ap][mac]["ts"] = ts
+
+        # Convertir a lista por AP
+        for ap in result:
+            result[ap] = list(result[ap].values())
+
+        return result
+    except Exception as e:
+        log.warning("Error consultando ap_clients en InfluxDB: %s", e)
         return {}
 
 
@@ -363,22 +443,23 @@ def get_live_snapshot() -> dict:
     Si InfluxDB falla o no está configurado, devuelve dicts vacíos.
 
     Returns:
-        dict: {"icmp": {}, "traffic": {}, "health": {}, "tcp": {},
-               "radio": {}}
+        dict: {"icmp": {}, "traffic": {}, "health": {}, "tcp": {}}
     """
     global _snapshot_cache, _snapshot_cache_time
 
     # ¿Caché válida?
     now = time.time()
+
     with _snapshot_lock:
         if _snapshot_cache and (now - _snapshot_cache_time) < CACHE_SECONDS:
             return _snapshot_cache
 
-    # Construir nuevo snapshot
+
     client = _get_client()
     if client is None:
         empty = {
-            "icmp": {}, "traffic": {}, "health": {}, "tcp": {}, "radio": {},
+            "icmp": {}, "traffic": {}, "health": {},
+            "tcp": {}, "radio": {}, "ap_clients": {},
         }
         with _snapshot_lock:
             _snapshot_cache = empty
@@ -389,19 +470,18 @@ def get_live_snapshot() -> dict:
     bucket = cfg["bucket"]
 
     snapshot = {
-        "icmp": _query_last_icmp(client, bucket),
+        "icmp":    _query_last_icmp(client, bucket),
         "traffic": _query_last_traffic(client, bucket),
-        "health": _query_last_health(client, bucket),
-        "tcp": _query_last_tcp(client, bucket),
-        "radio": _query_last_radio(client, bucket),
+        "health":  _query_last_health(client, bucket),
+        "tcp":     _query_last_tcp(client, bucket),
+        "radio":   _query_last_radio(client, bucket),
+        "ap_clients": _query_last_ap_clients(client, bucket),
     }
 
     with _snapshot_lock:
         _snapshot_cache = snapshot
         _snapshot_cache_time = now
-
     return snapshot
-
 
 # ============================================================
 # CIERRE AL SALIR

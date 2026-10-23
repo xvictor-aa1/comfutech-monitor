@@ -42,6 +42,9 @@ class AlertRule(models.Model):
             "logic": "AND"          # se combina con el anterior
           }
         ]
+
+    Las métricas de radiofrecuencia se evalúan solo en equipos con
+    modelo wireless (is_wireless_link=True).
     """
 
     # Número máximo de condicionales por regla
@@ -51,13 +54,24 @@ class AlertRule(models.Model):
     # CHOICES
     # ------------------------------------------------------------
     METRIC_CHOICES = [
+        # --- Métricas de disponibilidad ---
         ("device_down",      "Caída del dispositivo (sin ICMP)"),
         ("latency_ms",       "Latencia ICMP (ms)"),
         ("packet_loss_pct",  "Pérdida de paquetes (%)"),
+        # --- Métricas de tráfico ---
         ("utilization_pct",  "Utilización de enlace (%)"),
+        # --- Métricas de chasis ---
         ("cpu_pct",          "CPU (%)"),
         ("mem_pct",          "Memoria (%)"),
         ("temp_c",           "Temperatura (°C)"),
+        # --- Métricas de radiofrecuencia (wireless) ---
+        ("wl_signal",        "Señal de radio (dBm)"),
+        ("wl_noise_floor",   "Piso de ruido (dBm)"),
+        ("wl_ccq",           "CCQ - Calidad de enlace (%)"),
+        ("wl_tx_rate",       "Tasa de TX (kbps)"),
+        ("wl_rx_rate",       "Tasa de RX (kbps)"),
+        ("airmax_quality",   "Calidad airMAX (%)"),
+        ("airmax_capacity",  "Capacidad airMAX (%)"),
     ]
 
     OPERATOR_CHOICES = [
@@ -224,6 +238,14 @@ class AlertRule(models.Model):
             "cpu_pct":          ["gte", "gt"],
             "mem_pct":          ["gte", "gt"],
             "temp_c":           ["gte", "gt"],
+            # RF: señal y ruido suelen alertar con <, tasas y calidad con >
+            "wl_signal":        ["lte", "lt"],   # señal baja = malo
+            "wl_noise_floor":   ["gte", "gt"],   # ruido alto = malo
+            "wl_ccq":           ["lte", "lt"],
+            "wl_tx_rate":       ["lte", "lt"],
+            "wl_rx_rate":       ["lte", "lt"],
+            "airmax_quality":   ["lte", "lt"],
+            "airmax_capacity":  ["lte", "lt"],
         }
         ops = valid_map.get(metric, ["gte", "gt", "lt", "lte", "eq"])
         labels = dict(AlertRule.OPERATOR_CHOICES)

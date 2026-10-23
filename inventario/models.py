@@ -1,4 +1,12 @@
 # inventario/models.py
+"""
+Modelos de la app `inventario`.
+
+Incluye:
+  - DeviceModel: modelo de equipo con OIDs de chasis y de radiofrecuencia.
+  - Device:      equipo de red monitoreado.
+  - Interface:   interfaz de red de un equipo.
+"""
 from django.db import models
 
 
@@ -11,7 +19,11 @@ class DeviceModel(models.Model):
 
     Se usa para que al seleccionar un modelo en un Device, se carguen
     automáticamente las OIDs correctas para el polling de chasis
-    (CPU, memoria, temperatura, etc.).
+    (CPU, memoria, temperatura, uptime) y de radiofrecuencia
+    (frecuencia, señal, CCQ, tasas, airMAX).
+
+    Los OIDs de chasis y de RF se guardan en dos JSONField separados
+    para mantener la claridad y evitar mezclar contextos.
     """
     VENDOR_CHOICES = [
         ("MikroTik",  "MikroTik"),
@@ -38,12 +50,35 @@ class DeviceModel(models.Model):
     oids = models.JSONField(
         default=dict,
         blank=True,
-        verbose_name="OIDs específicos",
+        verbose_name="OIDs de chasis",
         help_text=(
             "Diccionario de OIDs propios de este modelo. "
             "Claves válidas: cpu_pct, mem_pct, mem_used, mem_size, "
             "mem_free, temp_c, uptime. "
             "Si está vacío, se usarán las OIDs por defecto del fabricante."
+        ),
+    )
+    radio_oids = models.JSONField(
+        default=dict,
+        blank=True,
+        verbose_name="OIDs de radiofrecuencia",
+        help_text=(
+            "Diccionario de OIDs propios de radiofrecuencia para este modelo. "
+            "Claves válidas: radio_freq, radio_txpower, wl_signal, "
+            "wl_noise_floor, wl_ccq, wl_tx_rate, wl_rx_rate, "
+            "airmax_quality, airmax_capacity, chan_width. "
+            "Solo se usa si el modelo está marcado como radio-enlace."
+        ),
+    )
+    has_interfaces = models.BooleanField(
+        default=True,
+        verbose_name="Tiene interfaces SNMP",
+        help_text=(
+            "Marcar si el modelo expone la tabla IF-MIB "
+            "(interfaces tradicionales: eth0, wlan0, etc.). "
+            "Desmarcar para CPEs o equipos sin interfaces monitoreables. "
+            "Si está desmarcado, el bloque 'SNMP Tráfico' no se muestra "
+            "en el monitoreo en vivo."
         ),
     )
     description = models.TextField(
@@ -57,7 +92,8 @@ class DeviceModel(models.Model):
         help_text=(
             "Marcar si este modelo es un equipo de radio-enlace "
             "(AirMax, Cambium, Mimosa, etc.). Los equipos con este "
-            "flag habilitan el monitoreo de Utilización de Enlace."
+            "flag habilitan el monitoreo de Utilización de Enlace y "
+            "de parámetros de radiofrecuencia."
         ),
     )
     active = models.BooleanField(
@@ -75,12 +111,18 @@ class DeviceModel(models.Model):
         verbose_name_plural = "Modelos de equipos"
 
     def __str__(self):
+        """Representación legible del modelo."""
         return f"{self.vendor} - {self.name}"
 
     @property
-    def has_custom_oids(self):
-        """Devuelve True si el modelo define OIDs propias."""
+    def has_custom_oids(self) -> bool:
+        """Devuelve True si el modelo define OIDs de chasis propias."""
         return bool(self.oids)
+
+    @property
+    def has_radio_oids(self) -> bool:
+        """Devuelve True si el modelo define OIDs de radiofrecuencia."""
+        return bool(self.radio_oids)
 
 
 # ============================================================
@@ -138,7 +180,7 @@ class Device(models.Model):
         null=True, blank=True,
         related_name="devices",
         verbose_name="Modelo",
-        help_text="Modelo específico del equipo (opcional, mejora el polling de chasis).",
+        help_text="Modelo específico del equipo (opcional, mejora el polling).",
     )
     location = models.CharField(
         max_length=100, default="Güigüe", verbose_name="Ubicación",
@@ -164,7 +206,20 @@ class Device(models.Model):
     # --- Monitoreo ---
     tcp_ports = models.CharField(
         max_length=255, default="161", verbose_name="Puertos TCP",
-        help_text="Separados por coma. Ej: 161,22,80",
+        help_text="Separados por coma. Ej: 440,22,80",
+    )
+
+    # --- Interfaces Internas de clientes AP ---
+    ap_interfaces = models.JSONField(
+        default=list,
+        blank=True,
+        verbose_name="Clientes AP (JSON)",
+        help_text=(
+            "Lista de clientes conectados a este equipo cuando opera "
+            "en modo Access Point. Se puebla automáticamente con el "
+            "Discovery. Solo aplica a modelos wireless. "
+            "Formato: [{mac, ip, hostname, first_seen, last_seen}, ...]"
+        ),
     )
 
     # --- Estado ---
@@ -179,35 +234,52 @@ class Device(models.Model):
         verbose_name_plural = "Equipos"
 
     def __str__(self):
+        """Representación legible del equipo."""
         return f"{self.name} ({self.ip})"
 
-    # ------------------------------------------------------------
-    # PROPIEDADES ÚTILES
-    # ------------------------------------------------------------
     @property
-    def has_chassis_monitoring(self):
+    def has_chassis_monitoring(self) -> bool:
         """Devuelve True si el rol recibe polling de chasis."""
         return self.device_role in ("core", "distribution")
 
     @property
-    def monitored_interfaces_count(self):
+    def is_wireless_link(self) -> bool:
+        """Devuelve True si el equipo es un radio-enlace."""
+        return bool(self.device_model and self.device_model.is_wireless_link)
+
+    @property
+    def has_interfaces_support(self) -> bool:
+        """
+        ¿El modelo del equipo soporta interfaces SNMP tradicionales?
+
+        Si no hay modelo asignado, se asume True por compatibilidad.
+        """
+        if not self.device_model:
+            return True
+        return self.device_model.has_interfaces
+
+    @property
+    def monitored_interfaces_count(self) -> int:
         """Cantidad de interfaces marcadas para monitoreo."""
         return self.interfaces.filter(monitored=True).count()
 
     @property
-    def total_interfaces_count(self):
+    def total_interfaces_count(self) -> int:
         """Cantidad total de interfaces descubiertas."""
         return self.interfaces.count()
 
     @property
-    def effective_oids(self):
-        """
-        Devuelve las OIDs efectivas para este equipo:
-          1. OIDs del modelo si está asignado
-          2. Fallback a OIDs del fabricante (manejado en el servicio)
-        """
+    def effective_oids(self) -> dict:
+        """OIDs de chasis efectivas (del modelo, o vacío para fallback)."""
         if self.device_model and self.device_model.oids:
             return dict(self.device_model.oids)
+        return {}
+
+    @property
+    def effective_radio_oids(self) -> dict:
+        """OIDs de RF efectivas (del modelo, o vacío para fallback)."""
+        if self.device_model and self.device_model.radio_oids:
+            return dict(self.device_model.radio_oids)
         return {}
 
 
@@ -256,11 +328,9 @@ class Interface(models.Model):
         verbose_name_plural = "Interfaces"
 
     def __str__(self):
+        """Representación legible de la interfaz."""
         return f"{self.device.name} - {self.if_name or 'if' + str(self.if_index)}"
 
-    # ------------------------------------------------------------
-    # PROPIEDADES ÚTILES
-    # ------------------------------------------------------------
     @property
     def speed_mbps(self):
         """Velocidad en Mbps, o None si no está disponible."""

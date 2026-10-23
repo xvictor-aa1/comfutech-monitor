@@ -11,8 +11,7 @@ Uso:
 integrarlo en el scheduler.
 """
 from django.core.management.base import BaseCommand
-
-from monitoreo.services.health import poll_radio
+from monitoreo.services.radio import poll_radio
 from monitoreo.services import influx_writer
 
 
@@ -40,7 +39,6 @@ class Command(BaseCommand):
         self.stdout.write(self.style.MIGRATE_HEADING(
             "\n=== POLL RADIO (Radiofrecuencia) ===\n"
         ))
-
         stats = None
         try:
             stats = poll_radio()

@@ -72,7 +72,7 @@
                         <div class="text-danger small mt-1">{{ form.name.errors.0 }}</div>
                         {% endif %}
                         <div class="form-text">
-                            Ej: <em>LiteAP GPS</em>, <em>RB4011iGS+</em>,
+                            Ej: <em>RB4011iGS+</em>, <em>AirMax LiteBeam M5</em>,
                             <em>ePMP 1000</em>.
                         </div>
                     </div>
@@ -95,8 +95,9 @@
                             <span class="text-muted small d-block">
                                 Marca si es un equipo de radio-enlace
                                 (AirMax, Cambium, Mimosa, etc.). Habilita
-                                el bloque de <em>radiofrecuencia</em> en
-                                el monitoreo en vivo.
+                                el bloque de <em>utilización de enlace</em>
+                                y el polling de <em>radiofrecuencia</em>
+                                en el monitoreo en vivo.
                             </span>
                         </label>
                     </div>
@@ -136,115 +137,223 @@
                         sobrescribir.
                     </div>
 
-                    <!-- Acordeón para chasis y radio -->
-                    <div class="accordion mb-3" id="accordionOids">
-                        <!-- Sección de chasis -->
-                        <div class="accordion-item">
-                            <h2 class="accordion-header">
-                                <button class="accordion-button" type="button"
-                                        data-bs-toggle="collapse"
-                                        data-bs-target="#collapseChasis">
-                                    <i class="bi bi-cpu me-2"></i>
-                                    OIDs de Chasis (CPU, Mem, Temp)
-                                </button>
-                            </h2>
-                            <div id="collapseChasis"
-                                 class="accordion-collapse collapse show"
-                                 data-bs-parent="#accordionOids">
-                                <div class="accordion-body">
-                                    {% for field in form %}
-                                        {% if field.name in "oid_cpu_pct oid_mem_pct oid_mem_used oid_mem_size oid_mem_free oid_temp_c oid_uptime" %}
-                                        <div class="mb-3">
-                                            <label class="form-label"
-                                                   for="{{ field.id_for_label }}">
-                                                {{ field.label }}
-                                            </label>
-                                            {{ field }}
-                                            {% if field.errors %}
-                                            <div class="text-danger small mt-1">
-                                                {{ field.errors.0 }}
-                                            </div>
-                                            {% endif %}
-                                            {% if field.help_text %}
-                                            <div class="form-text">{{ field.help_text }}</div>
-                                            {% endif %}
-                                        </div>
-                                        {% endif %}
-                                    {% endfor %}
-                                </div>
+                    <!-- CPU -->
+                    <div class="mb-3">
+                        <label class="form-label" for="{{ form.oid_cpu_pct.id_for_label }}">
+                            {{ form.oid_cpu_pct.label }}
+                        </label>
+                        {{ form.oid_cpu_pct }}
+                        {% if form.oid_cpu_pct.errors %}
+                        <div class="text-danger small mt-1">{{ form.oid_cpu_pct.errors.0 }}</div>
+                        {% endif %}
+                        <div class="form-text">{{ form.oid_cpu_pct.help_text }}</div>
+                    </div>
+
+                    <!-- Memoria -->
+                    <fieldset class="border rounded p-3 mb-3">
+                        <legend class="float-none w-auto px-2 fs-6 text-muted">
+                            <i class="bi bi-memory"></i> Memoria
+                        </legend>
+                        <div class="row g-2">
+                            <div class="col-md-6">
+                                <label class="form-label" for="{{ form.oid_mem_pct.id_for_label }}">
+                                    {{ form.oid_mem_pct.label }}
+                                </label>
+                                {{ form.oid_mem_pct }}
+                                {% if form.oid_mem_pct.errors %}
+                                <div class="text-danger small mt-1">{{ form.oid_mem_pct.errors.0 }}</div>
+                                {% endif %}
+                                <div class="form-text">{{ form.oid_mem_pct.help_text }}</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label" for="{{ form.oid_mem_free.id_for_label }}">
+                                    {{ form.oid_mem_free.label }}
+                                </label>
+                                {{ form.oid_mem_free }}
+                                {% if form.oid_mem_free.errors %}
+                                <div class="text-danger small mt-1">{{ form.oid_mem_free.errors.0 }}</div>
+                                {% endif %}
+                                <div class="form-text">{{ form.oid_mem_free.help_text }}</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label" for="{{ form.oid_mem_used.id_for_label }}">
+                                    {{ form.oid_mem_used.label }}
+                                </label>
+                                {{ form.oid_mem_used }}
+                                {% if form.oid_mem_used.errors %}
+                                <div class="text-danger small mt-1">{{ form.oid_mem_used.errors.0 }}</div>
+                                {% endif %}
+                                <div class="form-text">{{ form.oid_mem_used.help_text }}</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label" for="{{ form.oid_mem_size.id_for_label }}">
+                                    {{ form.oid_mem_size.label }}
+                                </label>
+                                {{ form.oid_mem_size }}
+                                {% if form.oid_mem_size.errors %}
+                                <div class="text-danger small mt-1">{{ form.oid_mem_size.errors.0 }}</div>
+                                {% endif %}
+                                <div class="form-text">{{ form.oid_mem_size.help_text }}</div>
                             </div>
                         </div>
+                    </fieldset>
 
-                        <!-- Sección de radiofrecuencia -->
-                        <div class="accordion-item">
-                            <h2 class="accordion-header">
-                                <button class="accordion-button collapsed"
-                                        type="button"
-                                        data-bs-toggle="collapse"
-                                        data-bs-target="#collapseRadio">
-                                    <i class="bi bi-broadcast-pin me-2"></i>
-                                    OIDs de Radiofrecuencia
-                                </button>
-                            </h2>
-                            <div id="collapseRadio"
-                                 class="accordion-collapse collapse"
-                                 data-bs-parent="#accordionOids">
-                                <div class="accordion-body">
-                                    <div class="alert alert-warning small mb-3">
-                                        <i class="bi bi-exclamation-triangle"></i>
-                                        Solo aplica a equipos de radioenlace.
-                                        Si los dejas vacíos, se usarán los
-                                        OIDs por defecto del fabricante.
-                                    </div>
-                                    {% for field in form %}
-                                        {% if field.name in "oid_freq_mhz oid_capacity_rx_kbps oid_capacity_tx_kbps oid_noise_dbm oid_signal_dbm oid_ccq_pct oid_tx_rate_mbps oid_rx_rate_mbps oid_sta_count" %}
-                                        <div class="mb-3">
-                                            <label class="form-label"
-                                                   for="{{ field.id_for_label }}">
-                                                {{ field.label }}
-                                            </label>
-                                            {{ field }}
-                                            {% if field.errors %}
-                                            <div class="text-danger small mt-1">
-                                                {{ field.errors.0 }}
-                                            </div>
-                                            {% endif %}
-                                            {% if field.help_text %}
-                                            <div class="form-text">{{ field.help_text }}</div>
-                                            {% endif %}
-                                        </div>
-                                        {% endif %}
-                                    {% endfor %}
-                                </div>
+                    <!-- Temperatura y Uptime -->
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label" for="{{ form.oid_temp_c.id_for_label }}">
+                                {{ form.oid_temp_c.label }}
+                            </label>
+                            {{ form.oid_temp_c }}
+                            {% if form.oid_temp_c.errors %}
+                            <div class="text-danger small mt-1">{{ form.oid_temp_c.errors.0 }}</div>
+                            {% endif %}
+                            <div class="form-text">{{ form.oid_temp_c.help_text }}</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="{{ form.oid_uptime.id_for_label }}">
+                                {{ form.oid_uptime.label }}
+                            </label>
+                            {{ form.oid_uptime }}
+                            {% if form.oid_uptime.errors %}
+                            <div class="text-danger small mt-1">{{ form.oid_uptime.errors.0 }}</div>
+                            {% endif %}
+                            <div class="form-text">{{ form.oid_uptime.help_text }}</div>
+                        </div>
+                    </div>
+
+                    <!-- ==================================================== -->
+                    <!-- OIDs de RADIOFRECUENCIA (solo si is_wireless_link)   -->
+                    <!-- ==================================================== -->
+                    <div id="radio-section" class="border rounded p-3 mb-3"
+                         style="display: {% if form.is_wireless_link.value %}block{% else %}none{% endif %};">
+                        <h6 class="text-info mb-3">
+                            <i class="bi bi-broadcast-pin"></i> OIDs de radiofrecuencia
+                        </h6>
+                        <div class="alert alert-light border small py-2 mb-3">
+                            <i class="bi bi-info-circle"></i>
+                            Solo aplica a modelos marcados como <strong>radio-enlace</strong>.
+                            Si los dejas vacíos, se usarán los OIDs por defecto del
+                            fabricante (Ubiquiti, Cambium, Mimosa).
+                        </div>
+
+                        <div class="row g-2">
+                            <div class="col-md-4">
+                                <label class="form-label small">{{ form.oid_radio_freq.label }}</label>
+                                {{ form.oid_radio_freq }}
+                                {% if form.oid_radio_freq.errors %}
+                                <div class="text-danger small">{{ form.oid_radio_freq.errors.0 }}</div>
+                                {% endif %}
+                                <div class="form-text">{{ form.oid_radio_freq.help_text }}</div>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small">{{ form.oid_radio_txpower.label }}</label>
+                                {{ form.oid_radio_txpower }}
+                                {% if form.oid_radio_txpower.errors %}
+                                <div class="text-danger small">{{ form.oid_radio_txpower.errors.0 }}</div>
+                                {% endif %}
+                                <div class="form-text">{{ form.oid_radio_txpower.help_text }}</div>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small">{{ form.oid_chan_width.label }}</label>
+                                {{ form.oid_chan_width }}
+                                {% if form.oid_chan_width.errors %}
+                                <div class="text-danger small">{{ form.oid_chan_width.errors.0 }}</div>
+                                {% endif %}
+                                <div class="form-text">{{ form.oid_chan_width.help_text }}</div>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small">{{ form.oid_wl_signal.label }}</label>
+                                {{ form.oid_wl_signal }}
+                                {% if form.oid_wl_signal.errors %}
+                                <div class="text-danger small">{{ form.oid_wl_signal.errors.0 }}</div>
+                                {% endif %}
+                                <div class="form-text">{{ form.oid_wl_signal.help_text }}</div>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small">{{ form.oid_wl_noise_floor.label }}</label>
+                                {{ form.oid_wl_noise_floor }}
+                                {% if form.oid_wl_noise_floor.errors %}
+                                <div class="text-danger small">{{ form.oid_wl_noise_floor.errors.0 }}</div>
+                                {% endif %}
+                                <div class="form-text">{{ form.oid_wl_noise_floor.help_text }}</div>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small">{{ form.oid_wl_ccq.label }}</label>
+                                {{ form.oid_wl_ccq }}
+                                {% if form.oid_wl_ccq.errors %}
+                                <div class="text-danger small">{{ form.oid_wl_ccq.errors.0 }}</div>
+                                {% endif %}
+                                <div class="form-text">{{ form.oid_wl_ccq.help_text }}</div>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small">{{ form.oid_wl_tx_rate.label }}</label>
+                                {{ form.oid_wl_tx_rate }}
+                                {% if form.oid_wl_tx_rate.errors %}
+                                <div class="text-danger small">{{ form.oid_wl_tx_rate.errors.0 }}</div>
+                                {% endif %}
+                                <div class="form-text">{{ form.oid_wl_tx_rate.help_text }}</div>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small">{{ form.oid_wl_rx_rate.label }}</label>
+                                {{ form.oid_wl_rx_rate }}
+                                {% if form.oid_wl_rx_rate.errors %}
+                                <div class="text-danger small">{{ form.oid_wl_rx_rate.errors.0 }}</div>
+                                {% endif %}
+                                <div class="form-text">{{ form.oid_wl_rx_rate.help_text }}</div>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small">{{ form.oid_airmax_quality.label }}</label>
+                                {{ form.oid_airmax_quality }}
+                                {% if form.oid_airmax_quality.errors %}
+                                <div class="text-danger small">{{ form.oid_airmax_quality.errors.0 }}</div>
+                                {% endif %}
+                                <div class="form-text">{{ form.oid_airmax_quality.help_text }}</div>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small">{{ form.oid_airmax_capacity.label }}</label>
+                                {{ form.oid_airmax_capacity }}
+                                {% if form.oid_airmax_capacity.errors %}
+                                <div class="text-danger small">{{ form.oid_airmax_capacity.errors.0 }}</div>
+                                {% endif %}
+                                <div class="form-text">{{ form.oid_airmax_capacity.help_text }}</div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Editor JSON avanzado -->
-                    <div class="border rounded p-3 mt-3">
-                        <div class="form-check form-switch mb-2">
-                            <input class="form-check-input" type="checkbox"
-                                   id="toggle_json_editor"
-                                   onchange="document.getElementById('json_editor_section').classList.toggle('d-none', !this.checked)">
-                            <label class="form-check-label small fw-bold"
-                                   for="toggle_json_editor">
-                                <i class="bi bi-code-slash"></i>
-                                Mostrar editor JSON avanzado
-                            </label>
+                    <!-- ==================================================== -->
+                    <!-- JSON AVANZADO (colapsable)                           -->
+                    <!-- ==================================================== -->
+                    <div class="card mt-2">
+                        <div class="card-header bg-light py-2" data-bs-toggle="collapse"
+                             data-bs-target="#advanced-json" style="cursor: pointer;">
+                            <i class="bi bi-braces"></i>
+                            <strong class="small">Configuración avanzada (JSON)</strong>
+                            <i class="bi bi-chevron-down float-end small"></i>
                         </div>
-                        <div id="json_editor_section" class="d-none">
-                            <div class="alert alert-warning small py-2 mb-2">
-                                <i class="bi bi-exclamation-triangle"></i>
-                                Si rellenas este campo, <strong>sobrescribe</strong>
-                                los OIDs individuales de arriba.
-                                Úsalo para pegar configuraciones completas.
+                        <div id="advanced-json" class="collapse">
+                            <div class="card-body py-2">
+                                <div class="alert alert-warning small py-2 mb-2">
+                                    <i class="bi bi-exclamation-triangle"></i>
+                                    <strong>Opcional.</strong> Si rellenas estos campos,
+                                    <strong>sobrescriben</strong> los OIDs individuales.
+                                    Úsalos solo para claves no expuestas arriba.
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label small">OIDs de chasis (JSON)</label>
+                                    {{ form.chassis_oids_json }}
+                                    {% if form.chassis_oids_json.errors %}
+                                    <div class="text-danger small">{{ form.chassis_oids_json.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                                <div class="mb-0">
+                                    <label class="form-label small">OIDs de radiofrecuencia (JSON)</label>
+                                    {{ form.radio_oids_json }}
+                                    {% if form.radio_oids_json.errors %}
+                                    <div class="text-danger small">{{ form.radio_oids_json.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
                             </div>
-                            {{ form.oids_json }}
-                            {% if form.oids_json.errors %}
-                            <div class="text-danger small mt-1">
-                                {{ form.oids_json.errors.0 }}
-                            </div>
-                            {% endif %}
                         </div>
                     </div>
 
@@ -253,12 +362,9 @@
         </div>
     </div>
 
-    <!-- ============================================================ -->
-    <!-- Botones                                                       -->
-    <!-- ============================================================ -->
+    <!-- Botones -->
     <div class="d-flex justify-content-between align-items-center mt-4">
-        <a href="{% url 'inventario:device_model_list' %}"
-           class="btn btn-outline-secondary">
+        <a href="{% url 'inventario:device_model_list' %}" class="btn btn-outline-secondary">
             <i class="bi bi-arrow-left"></i> Cancelar
         </a>
         <div>
@@ -276,4 +382,24 @@
     </div>
 </form>
 
+{% endblock %}
+
+{% block extra_js %}
+<script>
+/**
+ * Muestra/oculta la sección de OIDs de RF según el checkbox
+ * "Es radio-enlace".
+ */
+(function() {
+    const wirelessCheck = document.getElementById('id_is_wireless_link');
+    const radioSection = document.getElementById('radio-section');
+    if (!wirelessCheck || !radioSection) return;
+
+    function toggleRadioSection() {
+        radioSection.style.display = wirelessCheck.checked ? 'block' : 'none';
+    }
+    wirelessCheck.addEventListener('change', toggleRadioSection);
+    toggleRadioSection();
+})();
+</script>
 {% endblock %}

@@ -4,15 +4,13 @@ Formularios de la app `inventario`.
 
 Incluye:
   - DeviceForm:      crear/editar equipos de red.
-  - DeviceModelForm: crear/editar modelos de equipos con OIDs SNMP
-                     de chasis y de radiofrecuencia.
+  - DeviceModelForm: crear/editar modelos de equipos con OIDs de chasis
+                     y de radiofrecuencia, más un textarea JSON opcional.
 
-El formulario de modelos expone los OIDs como **campos individuales
-por clave conocida** (CPU, memoria, temperatura, frecuencia, capacidad
-RX/TX, señal, ruido, CCQ, etc.) para evitar errores de sintaxis JSON.
-Además, incluye un **editor JSON opcional** para usuarios avanzados
-que necesiten pegar configuraciones completas o definir claves no
-listadas.
+Los OIDs del modelo se exponen como campos individuales por clave
+conocida (cpu_pct, mem_pct, mem_used, mem_size, mem_free, temp_c,
+uptime) en lugar de un textarea JSON crudo. Esto evita errores de
+sintaxis y hace la UI mucho más amigable.
 """
 import json
 import re
@@ -28,8 +26,9 @@ from .models import Device, DeviceModel
 # Ej: 1.3.6.1.2.1.1.3.0
 OID_PATTERN = re.compile(r"^[0-9]+(\.[0-9]+)+$")
 
-# Claves de OIDs de chasis (CPU, memoria, temperatura, uptime).
-CHASSIS_OID_KEYS = [
+# Claves de OIDs conocidas por el servicio de chasis (chassis_oids.py).
+# Solo estas se muestran como campos en el formulario.
+OID_KEYS = [
     "cpu_pct",
     "mem_pct",
     "mem_used",
@@ -39,17 +38,18 @@ CHASSIS_OID_KEYS = [
     "uptime",
 ]
 
-# Claves de OIDs de radiofrecuencia (frecuencia, capacidad, señal, etc.).
+# Claves de OIDs de chasis
+CHASSIS_OID_KEYS = [
+    "cpu_pct", "mem_pct", "mem_used", "mem_size",
+    "mem_free", "temp_c", "uptime",
+]
+
+# Claves de OIDs de radiofrecuencia
 RADIO_OID_KEYS = [
-    "freq_mhz",
-    "capacity_rx_kbps",
-    "capacity_tx_kbps",
-    "noise_dbm",
-    "signal_dbm",
-    "ccq_pct",
-    "tx_rate_mbps",
-    "rx_rate_mbps",
-    "sta_count",
+    "radio_freq", "radio_txpower",
+    "wl_signal", "wl_noise_floor", "wl_ccq",
+    "wl_tx_rate", "wl_rx_rate",
+    "airmax_quality", "airmax_capacity", "chan_width",
 ]
 
 
@@ -81,9 +81,50 @@ def _validate_oid(value: str) -> str:
         )
     return value
 
+def _parse_json_dict(raw: str, label: str) -> dict:
+    """
+    Parsea un textarea JSON y verifica que sea un diccionario.
+
+    Args:
+        raw: contenido del textarea.
+        label: nombre del campo para mensajes de error.
+
+    Returns:
+        dict: diccionario parseado (vacío si raw está vacío).
+
+    Raises:
+        forms.ValidationError: si el JSON es inválido o no es un objeto.
+    """
+    if not raw or not raw.strip():
+        return {}
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError as e:
+        raise forms.ValidationError(
+            f"JSON inválido en {label}: {e.msg} (línea {e.lineno})."
+        )
+    if not isinstance(data, dict):
+        raise forms.ValidationError(
+            f"{label} debe ser un objeto JSON ({{...}}), no una lista."
+        )
+    for k, v in data.items():
+        if not isinstance(k, str):
+            raise forms.ValidationError(
+                f"Las claves de {label} deben ser texto."
+            )
+        if not isinstance(v, str):
+            raise forms.ValidationError(
+                f"El valor de '{k}' en {label} debe ser texto (OID)."
+            )
+        if v and not OID_PATTERN.match(v.strip()):
+            raise forms.ValidationError(
+                f"El OID de '{k}' en {label} no es válido."
+            )
+    return data
+
 
 # ============================================================
-# FORM: EQUIPO (Device)
+# FORM: EQUIPO (ya existente)
 # ============================================================
 class DeviceForm(forms.ModelForm):
     """
@@ -107,54 +148,42 @@ class DeviceForm(forms.ModelForm):
         ]
         widgets = {
             "name": forms.TextInput(attrs={
-                "class": "form-control",
-                "autofocus": True,
+                "class": "form-control", "autofocus": True,
                 "placeholder": "Ej: RB Güigüe",
             }),
             "ip": forms.TextInput(attrs={
-                "class": "form-control",
-                "placeholder": "192.168.1.1",
+                "class": "form-control", "placeholder": "192.168.1.1",
             }),
             "device_type": forms.Select(attrs={"class": "form-select"}),
             "device_role": forms.Select(attrs={"class": "form-select"}),
             "vendor": forms.Select(attrs={
-                "class": "form-select",
-                "id": "id_vendor",
+                "class": "form-select", "id": "id_vendor",
             }),
             "device_model": forms.Select(attrs={
-                "class": "form-select",
-                "id": "id_device_model",
+                "class": "form-select", "id": "id_device_model",
             }),
             "location": forms.TextInput(attrs={
-                "class": "form-control",
-                "placeholder": "Ej: Güigüe",
+                "class": "form-control", "placeholder": "Ej: Güigüe",
             }),
             "snmp_version": forms.Select(
                 choices=[("1", "SNMPv1"), ("2c", "SNMPv2c"), ("3", "SNMPv3")],
                 attrs={"class": "form-select"},
             ),
             "snmp_community": forms.TextInput(attrs={
-                "class": "form-control",
-                "placeholder": "public",
+                "class": "form-control", "placeholder": "public",
             }),
             "snmp_user": forms.TextInput(attrs={"class": "form-control"}),
             "snmp_auth": forms.TextInput(attrs={"class": "form-control"}),
             "snmp_priv": forms.TextInput(attrs={"class": "form-control"}),
             "tcp_ports": forms.TextInput(attrs={
-                "class": "form-control",
-                "placeholder": "161,22,80",
+                "class": "form-control", "placeholder": "161,22,80",
             }),
             "active": forms.CheckboxInput(attrs={"class": "form-check-input"}),
         }
 
     def __init__(self, *args, **kwargs):
         """
-        Inicializa el formulario.
-
-        - Deja el queryset de `device_model` vacío hasta que se
-          seleccione un fabricante (se llena vía AJAX).
-        - Si el formulario ya tiene datos (POST) o una instancia,
-          precarga los modelos del fabricante correspondiente.
+        Inicializa el formulario y carga los modelos según el fabricante.
         """
         super().__init__(*args, **kwargs)
 
@@ -176,15 +205,7 @@ class DeviceForm(forms.ModelForm):
             ).order_by("name")
 
     def clean_ip(self):
-        """
-        Valida que la IP sea única entre equipos.
-
-        Returns:
-            str: la IP limpia.
-
-        Raises:
-            forms.ValidationError: si ya existe otro equipo con esa IP.
-        """
+        """Valida que la IP sea única entre equipos."""
         ip = self.cleaned_data.get("ip", "").strip()
         qs = Device.objects.filter(ip=ip)
         if self.instance and self.instance.pk:
@@ -194,31 +215,18 @@ class DeviceForm(forms.ModelForm):
         return ip
 
     def clean(self):
-        """
-        Validaciones cruzadas del formulario.
-
-        - Coherencia fabricante ↔ modelo.
-        - Campos requeridos para SNMPv3.
-
-        Returns:
-            dict: cleaned_data con los ajustes aplicados.
-        """
+        """Valida coherencia fabricante ↔ modelo y campos SNMPv3."""
         cleaned = super().clean()
-
         vendor = cleaned.get("vendor")
         device_model = cleaned.get("device_model")
 
-        # Validar coherencia fabricante ↔ modelo
-        if vendor and device_model:
-            if device_model.vendor != vendor:
-                self.add_error(
-                    "device_model",
-                    "El modelo seleccionado no pertenece al fabricante elegido.",
-                )
+        if vendor and device_model and device_model.vendor != vendor:
+            self.add_error(
+                "device_model",
+                "El modelo seleccionado no pertenece al fabricante elegido.",
+            )
 
-        # Validar SNMPv3
-        snmp_ver = cleaned.get("snmp_version")
-        if snmp_ver == "3":
+        if cleaned.get("snmp_version") == "3":
             if not cleaned.get("snmp_user"):
                 self.add_error("snmp_user", "Requerido para SNMPv3.")
             if not cleaned.get("snmp_auth"):
@@ -228,22 +236,40 @@ class DeviceForm(forms.ModelForm):
 
 
 # ============================================================
-# FORM: MODELO DE EQUIPO (DeviceModel)
+# FORM: MODELO DE EQUIPO
 # ============================================================
 class DeviceModelForm(forms.ModelForm):
     """
     Formulario para crear o editar un modelo de equipo.
 
-    - Los OIDs se editan como campos individuales por clave conocida.
-    - Se añade un campo `oids_json` para edición directa del JSON
-      completo (opcional).
-    - El campo `vendor` se bloquea si el modelo ya tiene equipos
-      asociados.
+    Los OIDs específicos del modelo se editan como **campos individuales
+    por clave conocida** (cpu_pct, mem_pct, mem_used, mem_size, mem_free,
+    temp_c, uptime), en lugar de exponer un textarea JSON crudo. Al
+    guardar, se reconstruye el diccionario y se asigna al campo JSON
+    `oids` del modelo.
+
+    Reglas de negocio:
+      - Si el modelo ya tiene equipos asociados, NO se permite cambiar
+        el fabricante (rompería la consistencia Device.vendor ==
+        DeviceModel.vendor).
+      - Los OIDs son todos opcionales. Si se dejan vacíos, el poller
+        de chasis usará los OIDs por defecto del fabricante
+        (`chassis_oids.py`).
+
+    Expone los OIDs como campos individuales agrupados en dos secciones:
+      - OIDs de chasis (CPU, memoria, temperatura, uptime).
+      - OIDs de radiofrecuencia (frecuencia, potencia, señal, ruido,
+        CCQ, tasas TX/RX, calidad/capacidad airMAX, ancho de canal).
+
+    Incluye además dos textareas JSON opcionales que permiten pegar
+    directamente un diccionario de OIDs. Si se rellenan, sus claves
+    **sobrescriben** los campos individuales.
     """
 
-    # --- Campos de OIDs de chasis ---
+    # --- Campos auxiliares para cada OID ---
     oid_cpu_pct = forms.CharField(
-        required=False, label="CPU (%)",
+        required=False,
+        label="CPU (%)",
         widget=forms.TextInput(attrs={
             "class": "form-control font-monospace form-control-sm",
             "placeholder": "1.3.6.1.4.1.14988.1.1.3.10.0",
@@ -251,7 +277,8 @@ class DeviceModelForm(forms.ModelForm):
         help_text="OID del porcentaje de uso de CPU.",
     )
     oid_mem_pct = forms.CharField(
-        required=False, label="Memoria (%)",
+        required=False,
+        label="Memoria (%)",
         widget=forms.TextInput(attrs={
             "class": "form-control font-monospace form-control-sm",
             "placeholder": "1.3.6.1.4.1.2011.5.25.31.1.1.1.1.7.1",
@@ -259,7 +286,8 @@ class DeviceModelForm(forms.ModelForm):
         help_text="OID del porcentaje de uso de memoria (si existe directo).",
     )
     oid_mem_used = forms.CharField(
-        required=False, label="Memoria usada",
+        required=False,
+        label="Memoria usada",
         widget=forms.TextInput(attrs={
             "class": "form-control font-monospace form-control-sm",
             "placeholder": "1.3.6.1.2.1.25.2.3.1.6.65536",
@@ -267,7 +295,8 @@ class DeviceModelForm(forms.ModelForm):
         help_text="OID de bytes usados (se combina con mem_size).",
     )
     oid_mem_size = forms.CharField(
-        required=False, label="Memoria total",
+        required=False,
+        label="Memoria total",
         widget=forms.TextInput(attrs={
             "class": "form-control font-monospace form-control-sm",
             "placeholder": "1.3.6.1.2.1.25.2.3.1.5.65536",
@@ -275,7 +304,8 @@ class DeviceModelForm(forms.ModelForm):
         help_text="OID del tamaño total de memoria.",
     )
     oid_mem_free = forms.CharField(
-        required=False, label="Memoria libre",
+        required=False,
+        label="Memoria libre",
         widget=forms.TextInput(attrs={
             "class": "form-control font-monospace form-control-sm",
             "placeholder": "1.3.6.1.4.1.9.9.48.1.1.1.6.1",
@@ -283,7 +313,8 @@ class DeviceModelForm(forms.ModelForm):
         help_text="OID de bytes libres (alternativa a mem_used + mem_size).",
     )
     oid_temp_c = forms.CharField(
-        required=False, label="Temperatura (°C)",
+        required=False,
+        label="Temperatura (°C)",
         widget=forms.TextInput(attrs={
             "class": "form-control font-monospace form-control-sm",
             "placeholder": "1.3.6.1.4.1.14988.1.1.3.100.1.3.14",
@@ -291,7 +322,8 @@ class DeviceModelForm(forms.ModelForm):
         help_text="OID de temperatura del chasis.",
     )
     oid_uptime = forms.CharField(
-        required=False, label="Uptime",
+        required=False,
+        label="Uptime",
         widget=forms.TextInput(attrs={
             "class": "form-control font-monospace form-control-sm",
             "placeholder": "1.3.6.1.2.1.1.3.0",
@@ -299,100 +331,129 @@ class DeviceModelForm(forms.ModelForm):
         help_text="OID de uptime (TimeTicks). Se autocompleta si se deja vacío.",
     )
 
-    # --- Campos de OIDs de radiofrecuencia ---
-    oid_freq_mhz = forms.CharField(
-        required=False, label="Frecuencia (MHz)",
+    # --- Campos auxiliares de radiofrecuencia ---
+    oid_radio_freq = forms.CharField(
+        required=False,
+        label="Frecuencia RF (MHz)",
         widget=forms.TextInput(attrs={
             "class": "form-control font-monospace form-control-sm",
-            "placeholder": "1.3.6.1.4.1.41112.1.4.1.1.4",
+            "placeholder": "1.3.6.1.4.1.41112.1.4.1.1.4.1",
         }),
-        help_text="Frecuencia de operación del radioenlace.",
+        help_text="Frecuencia de operación actual del radio (MHz).",
     )
-    oid_capacity_rx_kbps = forms.CharField(
-        required=False, label="Capacidad RX (kbps)",
+    oid_radio_txpower = forms.CharField(
+        required=False,
+        label="TX Power (dBm)",
         widget=forms.TextInput(attrs={
             "class": "form-control font-monospace form-control-sm",
-            "placeholder": "1.3.6.1.4.1.41112.1.4.7.1.18",
+            "placeholder": "1.3.6.1.4.1.41112.1.4.1.1.6.1",
         }),
-        help_text="Capacidad de recepción (Ubiquiti AirMax).",
+        help_text="Potencia de transmisión configurada (dBm).",
     )
-    oid_capacity_tx_kbps = forms.CharField(
-        required=False, label="Capacidad TX (kbps)",
+    oid_wl_signal = forms.CharField(
+        required=False,
+        label="Signal (dBm)",
         widget=forms.TextInput(attrs={
             "class": "form-control font-monospace form-control-sm",
-            "placeholder": "1.3.6.1.4.1.41112.1.4.7.1.19",
+            "placeholder": "1.3.6.1.4.1.41112.1.4.5.1.5.1",
         }),
-        help_text="Capacidad de transmisión (Ubiquiti AirMax).",
+        help_text="Nivel de señal recibida (dBm). Típico: -40 a -80 dBm.",
     )
-    oid_noise_dbm = forms.CharField(
-        required=False, label="Ruido (dBm)",
+    oid_wl_noise_floor = forms.CharField(
+        required=False,
+        label="Noise Floor (dBm)",
         widget=forms.TextInput(attrs={
             "class": "form-control font-monospace form-control-sm",
-            "placeholder": "1.3.6.1.4.1.41112.1.4.5.1.8",
+            "placeholder": "1.3.6.1.4.1.41112.1.4.5.1.8.1",
         }),
-        help_text="Nivel de ruido del enlace (noise floor).",
+        help_text="Nivel de ruido en el canal (dBm). Típico: -95 a -80 dBm.",
     )
-    oid_signal_dbm = forms.CharField(
-        required=False, label="Señal (dBm)",
+    oid_wl_ccq = forms.CharField(
+        required=False,
+        label="CCQ (%)",
         widget=forms.TextInput(attrs={
             "class": "form-control font-monospace form-control-sm",
-            "placeholder": "1.3.6.1.4.1.41112.1.4.5.1.5",
+            "placeholder": "1.3.6.1.4.1.41112.1.4.5.1.7.1",
         }),
-        help_text="Nivel de señal recibida (RSSI).",
+        help_text="Calidad del enlace (%). Valores >80% son buenos.",
     )
-    oid_ccq_pct = forms.CharField(
-        required=False, label="CCQ (%)",
+    oid_wl_tx_rate = forms.CharField(
+        required=False,
+        label="TX Rate (bps)",
         widget=forms.TextInput(attrs={
             "class": "form-control font-monospace form-control-sm",
-            "placeholder": "1.3.6.1.4.1.41112.1.4.5.1.7",
+            "placeholder": "1.3.6.1.4.1.41112.1.4.5.1.9.1",
         }),
-        help_text="Calidad de la conexión (Client Connection Quality).",
+        help_text="Tasa de transmisión actual en bits por segundo (bps).",
     )
-    oid_tx_rate_mbps = forms.CharField(
-        required=False, label="Tasa TX (Mbps)",
+    oid_wl_rx_rate = forms.CharField(
+        required=False,
+        label="RX Rate (bps)",
         widget=forms.TextInput(attrs={
             "class": "form-control font-monospace form-control-sm",
-            "placeholder": "1.3.6.1.4.1.41112.1.4.5.1.9",
+            "placeholder": "1.3.6.1.4.1.41112.1.4.5.1.10.1",
         }),
-        help_text="Tasa de transmisión actual.",
+        help_text="Tasa de recepción actual en bits por segundo (bps).",
     )
-    oid_rx_rate_mbps = forms.CharField(
-        required=False, label="Tasa RX (Mbps)",
+    oid_airmax_quality = forms.CharField(
+        required=False,
+        label="airMAX Quality (%)",
         widget=forms.TextInput(attrs={
             "class": "form-control font-monospace form-control-sm",
-            "placeholder": "1.3.6.1.4.1.41112.1.4.5.1.10",
+            "placeholder": "1.3.6.1.4.1.41112.1.4.6.1.4.1",
         }),
-        help_text="Tasa de recepción actual.",
+        help_text="Calidad global del enlace airMAX (%).",
     )
-    oid_sta_count = forms.CharField(
-        required=False, label="Clientes conectados",
+    oid_airmax_capacity = forms.CharField(
+        required=False,
+        label="airMAX Capacity (%)",
         widget=forms.TextInput(attrs={
             "class": "form-control font-monospace form-control-sm",
-            "placeholder": "1.3.6.1.4.1.41112.1.4.5.1.15",
+            "placeholder": "1.3.6.1.4.1.41112.1.4.6.1.5.1",
         }),
-        help_text="Número de estaciones asociadas al AP.",
+        help_text="Capacidad estimada del enlace airMAX (%).",
+    )
+    oid_chan_width = forms.CharField(
+        required=False,
+        label="Ancho de canal (MHz)",
+        widget=forms.TextInput(attrs={
+            "class": "form-control font-monospace form-control-sm",
+            "placeholder": "1.3.6.1.4.1.41112.1.4.5.1.14.1",
+        }),
+        help_text="Ancho del canal configurado (MHz). Ej: 10, 20, 40, 80.",
     )
 
-    # --- Editor JSON opcional ---
-    oids_json = forms.CharField(
+    # --- Textareas JSON opcionales ---
+    chassis_oids_json = forms.CharField(
         required=False,
-        label="Editar JSON de OIDs (avanzado)",
+        label="OIDs de chasis (JSON avanzado)",
         widget=forms.Textarea(attrs={
-            "class": "form-control font-monospace form-control-sm",
-            "rows": 6,
-            "placeholder": '{"cpu_pct": "1.3.6.1.4.1.41112.1.4.8.3.0", ...}',
+            "class": "form-control font-monospace",
+            "rows": 3,
+            "placeholder": '{"cpu_pct": "1.3.6...", "mem_pct": "1.3.6..."}',
         }),
-        help_text=(
-            "Editor directo del JSON. Si se rellena, **sobrescribe** "
-            "los campos individuales de arriba. Útil para pegar "
-            "configuraciones completas o para claves no listadas."
-        ),
+        help_text="Opcional. Si lo rellenas, sobrescribe los campos individuales.",
+    )
+    radio_oids_json = forms.CharField(
+        required=False,
+        label="OIDs de radiofrecuencia (JSON avanzado)",
+        widget=forms.Textarea(attrs={
+            "class": "form-control font-monospace",
+            "rows": 4,
+            "placeholder": '{"radio_freq": "1.3.6...", "wl_signal": "1.3.6..."}',
+        }),
+        help_text="Opcional. Si lo rellenas, sobrescribe los campos individuales.",
     )
 
     class Meta:
         model = DeviceModel
         fields = [
-            "vendor", "name", "description", "is_wireless_link", "active",
+            "vendor",
+            "name",
+            "description",
+            "is_wireless_link",
+            "has_interfaces", 
+            "active",
         ]
         widgets = {
             "vendor": forms.Select(attrs={
@@ -401,16 +462,21 @@ class DeviceModelForm(forms.ModelForm):
             }),
             "name": forms.TextInput(attrs={
                 "class": "form-control",
-                "placeholder": "Ej: LiteAP GPS, RB4011iGS+",
+                "placeholder": "Ej: RB4011iGS+, AirMax LiteBeam M5",
             }),
             "description": forms.Textarea(attrs={
                 "class": "form-control",
                 "rows": 2,
-                "placeholder": "Notas opcionales sobre el modelo.",
+                "placeholder": "Notas opcionales sobre el modelo (firmware, características, etc.)",
             }),
-            "is_wireless_link": forms.CheckboxInput(
-                attrs={"class": "form-check-input"}
-            ),
+            "is_wireless_link": forms.CheckboxInput(attrs={
+                "class": "form-check-input",
+                "id": "id_is_wireless_link"
+            }),
+            "has_interfaces": forms.CheckboxInput(attrs={
+                "class": "form-check-input",
+                "id": "id_has_interfaces",
+            }),
             "active": forms.CheckboxInput(attrs={"class": "form-check-input"}),
         }
         labels = {
@@ -418,6 +484,7 @@ class DeviceModelForm(forms.ModelForm):
             "name": "Nombre del modelo",
             "description": "Descripción",
             "is_wireless_link": "Es radio-enlace",
+            "has_interfaces": "Tiene interfaces SNMP",
             "active": "Modelo activo",
         }
 
@@ -427,100 +494,102 @@ class DeviceModelForm(forms.ModelForm):
 
         - Precarga los valores actuales de OIDs en sus campos
           correspondientes (si es edición).
-        - Precarga el editor JSON con el contenido actual.
         - Bloquea el campo `vendor` si el modelo ya tiene equipos
-          asociados.
+          asociados (para evitar inconsistencias).
+        - Precarga textareas JSON si el modelo ya tiene datos.
         """
         super().__init__(*args, **kwargs)
 
-        # Precargar OIDs existentes en los campos individuales
-        if self.instance and self.instance.pk and self.instance.oids:
-            for key in CHASSIS_OID_KEYS + RADIO_OID_KEYS:
-                field_name = f"oid_{key}"
-                if field_name in self.fields:
-                    value = self.instance.oids.get(key, "")
-                    if value:
-                        self.fields[field_name].initial = value
+        # Precargar OIDs existentes
+        if self.instance and self.instance.pk:
+            # Precargar OIDs individuales
+            for key in CHASSIS_OID_KEYS:
+                field = f"oid_{key}"
+                if field in self.fields:
+                    val = (self.instance.oids or {}).get(key, "")
+                    if val:
+                        self.fields[field].initial = val
+            for key in RADIO_OID_KEYS:
+                field = f"oid_{key}"
+                if field in self.fields:
+                    val = (self.instance.radio_oids or {}).get(key, "")
+                    if val:
+                        self.fields[field].initial = val
 
-            # Precargar el editor JSON
-            self.fields["oids_json"].initial = json.dumps(
-                self.instance.oids, indent=2, ensure_ascii=False
-            )
+            # Precargar textareas JSON
+            if self.instance.oids:
+                self.fields["chassis_oids_json"].initial = json.dumps(
+                    self.instance.oids, indent=2, ensure_ascii=False
+                )
+            if self.instance.radio_oids:
+                self.fields["radio_oids_json"].initial = json.dumps(
+                    self.instance.radio_oids, indent=2, ensure_ascii=False
+                )
 
-        # Bloquear cambio de vendor si hay equipos asociados
-        if self.instance and self.instance.pk and self.instance.devices.exists():
-            self.fields["vendor"].disabled = True
-            self.fields["vendor"].help_text = (
-                "No puedes cambiar el fabricante: este modelo ya está "
-                "siendo usado por uno o más equipos."
-            )
+            # Bloquear cambio de vendor si hay equipos asociados
+            if self.instance.devices.exists():
+                self.fields["vendor"].disabled = True
+                self.fields["vendor"].help_text = (
+                    "No puedes cambiar el fabricante: este modelo ya está "
+                    "siendo usado por uno o más equipos."
+                )
 
     # ------------------------------------------------------------
     # VALIDACIÓN INDIVIDUAL DE CADA OID
     # ------------------------------------------------------------
+
+    # --- Validación individual ---
     def clean_oid_cpu_pct(self):
-        """Valida el OID de CPU."""
         return _validate_oid(self.cleaned_data.get("oid_cpu_pct"))
-
     def clean_oid_mem_pct(self):
-        """Valida el OID de memoria (porcentaje)."""
         return _validate_oid(self.cleaned_data.get("oid_mem_pct"))
-
     def clean_oid_mem_used(self):
-        """Valida el OID de memoria usada."""
         return _validate_oid(self.cleaned_data.get("oid_mem_used"))
-
     def clean_oid_mem_size(self):
-        """Valida el OID de tamaño de memoria."""
         return _validate_oid(self.cleaned_data.get("oid_mem_size"))
-
     def clean_oid_mem_free(self):
-        """Valida el OID de memoria libre."""
         return _validate_oid(self.cleaned_data.get("oid_mem_free"))
-
     def clean_oid_temp_c(self):
-        """Valida el OID de temperatura."""
         return _validate_oid(self.cleaned_data.get("oid_temp_c"))
-
     def clean_oid_uptime(self):
-        """Valida el OID de uptime."""
         return _validate_oid(self.cleaned_data.get("oid_uptime"))
+    def clean_oid_radio_freq(self):
+        return _validate_oid(self.cleaned_data.get("oid_radio_freq"))
+    def clean_oid_radio_txpower(self):
+        return _validate_oid(self.cleaned_data.get("oid_radio_txpower"))
+    def clean_oid_wl_signal(self):
+        return _validate_oid(self.cleaned_data.get("oid_wl_signal"))
+    def clean_oid_wl_noise_floor(self):
+        return _validate_oid(self.cleaned_data.get("oid_wl_noise_floor"))
+    def clean_oid_wl_ccq(self):
+        return _validate_oid(self.cleaned_data.get("oid_wl_ccq"))
+    def clean_oid_wl_tx_rate(self):
+        return _validate_oid(self.cleaned_data.get("oid_wl_tx_rate"))
+    def clean_oid_wl_rx_rate(self):
+        return _validate_oid(self.cleaned_data.get("oid_wl_rx_rate"))
+    def clean_oid_airmax_quality(self):
+        return _validate_oid(self.cleaned_data.get("oid_airmax_quality"))
+    def clean_oid_airmax_capacity(self):
+        return _validate_oid(self.cleaned_data.get("oid_airmax_capacity"))
+    def clean_oid_chan_width(self):
+        return _validate_oid(self.cleaned_data.get("oid_chan_width"))
 
-    def clean_oid_freq_mhz(self):
-        """Valida el OID de frecuencia."""
-        return _validate_oid(self.cleaned_data.get("oid_freq_mhz"))
+    # ------------------------------------------------------------
+    # VALIDACIÓN DE TEXTAREAS JSON
+    # ------------------------------------------------------------
+    def clean_chassis_oids_json(self):
+        """Parsea y valida el JSON de OIDs de chasis."""
+        return _parse_json_dict(
+            self.cleaned_data.get("chassis_oids_json", ""),
+            "OIDs de chasis",
+        )
 
-    def clean_oid_capacity_rx_kbps(self):
-        """Valida el OID de capacidad de recepción."""
-        return _validate_oid(self.cleaned_data.get("oid_capacity_rx_kbps"))
-
-    def clean_oid_capacity_tx_kbps(self):
-        """Valida el OID de capacidad de transmisión."""
-        return _validate_oid(self.cleaned_data.get("oid_capacity_tx_kbps"))
-
-    def clean_oid_noise_dbm(self):
-        """Valida el OID de ruido."""
-        return _validate_oid(self.cleaned_data.get("oid_noise_dbm"))
-
-    def clean_oid_signal_dbm(self):
-        """Valida el OID de señal."""
-        return _validate_oid(self.cleaned_data.get("oid_signal_dbm"))
-
-    def clean_oid_ccq_pct(self):
-        """Valida el OID de CCQ."""
-        return _validate_oid(self.cleaned_data.get("oid_ccq_pct"))
-
-    def clean_oid_tx_rate_mbps(self):
-        """Valida el OID de tasa de transmisión."""
-        return _validate_oid(self.cleaned_data.get("oid_tx_rate_mbps"))
-
-    def clean_oid_rx_rate_mbps(self):
-        """Valida el OID de tasa de recepción."""
-        return _validate_oid(self.cleaned_data.get("oid_rx_rate_mbps"))
-
-    def clean_oid_sta_count(self):
-        """Valida el OID de número de clientes."""
-        return _validate_oid(self.cleaned_data.get("oid_sta_count"))
+    def clean_radio_oids_json(self):
+        """Parsea y valida el JSON de OIDs de RF."""
+        return _parse_json_dict(
+            self.cleaned_data.get("radio_oids_json", ""),
+            "OIDs de radiofrecuencia",
+        )
 
     # ------------------------------------------------------------
     # VALIDACIÓN CRUZADA
@@ -533,9 +602,7 @@ class DeviceModelForm(forms.ModelForm):
         esta validación es la red de seguridad del lado servidor.
         """
         vendor = self.cleaned_data.get("vendor")
-        if (
-            self.instance
-            and self.instance.pk
+        if (self.instance and self.instance.pk
             and self.instance.devices.exists()
             and vendor != self.instance.vendor
         ):
@@ -546,70 +613,63 @@ class DeviceModelForm(forms.ModelForm):
             )
         return vendor
 
-    def clean_oids_json(self):
+    def clean(self):
         """
-        Valida que el JSON sea un objeto válido y que cada valor sea
-        un OID con formato correcto.
+        Valida coherencia entre campos de memoria.
 
-        Returns:
-            str: el JSON en bruto (si es válido) o cadena vacía.
-
-        Raises:
-            forms.ValidationError: si el JSON no es un objeto o algún
-                valor no es un OID válido.
+        Si el usuario ingresa `mem_pct` Y también `mem_used`/`mem_size`,
+        se prioriza `mem_pct` en el poller. No es un error, solo se
+        advierte en la UI.
         """
-        raw = self.cleaned_data.get("oids_json")
-        if not raw or not raw.strip():
-            return ""
-        try:
-            data = json.loads(raw)
-        except json.JSONDecodeError as e:
-            raise forms.ValidationError(f"JSON inválido: {e}")
-        if not isinstance(data, dict):
-            raise forms.ValidationError(
-                "El JSON debe ser un objeto (clave-valor)."
-            )
-        # Validar que los valores sean strings de OIDs
-        for key, val in data.items():
-            if not isinstance(val, str) or not val.strip():
-                raise forms.ValidationError(
-                    f"El valor de '{key}' debe ser un OID no vacío."
-                )
-            _validate_oid(val)  # Lanza ValidationError si no es OID
-        return raw
+        cleaned = super().clean()
+        return cleaned
 
     # ------------------------------------------------------------
     # GUARDADO
     # ------------------------------------------------------------
     def save(self, commit=True):
         """
-        Guarda el modelo reconstruyendo el dict `oids`.
+        Guarda el modelo, reconstruyendo el dict `oids` a partir de
+        los campos auxiliares.
 
-        - Si `oids_json` tiene contenido, se usa ese JSON tal cual.
-        - Si no, se construye a partir de los campos individuales.
-        - Si todos los campos están vacíos, `oids` queda como `{}`,
-          lo que activa el fallback a los OIDs por defecto del
-          fabricante en el poller.
+        Si todos los campos de OIDs están vacíos, `oids` queda como
+        `{}` (diccionario vacío), lo que activa el fallback a los
+        OIDs por defecto del fabricante.
+
+        Guarda el modelo combinando:
+          1. OIDs individuales (chasis + RF).
+          2. Textareas JSON (sobrescriben los individuales si están presentes).
 
         Args:
-            commit: si es True, guarda en la BD.
+            commit: si True, guarda en BD inmediatamente.
 
         Returns:
-            DeviceModel: la instancia guardada (o no, si commit=False).
+            DeviceModel: la instancia guardada.
         """
         instance = super().save(commit=False)
 
-        # Prioridad: JSON explícito > campos individuales
-        raw_json = self.cleaned_data.get("oids_json", "").strip()
-        if raw_json:
-            instance.oids = json.loads(raw_json)
-        else:
-            oids = {}
-            for key in CHASSIS_OID_KEYS + RADIO_OID_KEYS:
-                value = self.cleaned_data.get(f"oid_{key}")
-                if value:
-                    oids[key] = value
-            instance.oids = oids
+        # --- Chasis ---
+        chassis = {}
+        for key in CHASSIS_OID_KEYS:
+            val = self.cleaned_data.get(f"oid_{key}")
+            if val:
+                chassis[key] = val
+        json_chassis = self.cleaned_data.get("chassis_oids_json") or {}
+        if json_chassis:
+            chassis.update(json_chassis)
+        instance.oids = chassis
+
+        # --- Radiofrecuencia (solo si es wireless) ---
+        radio = {}
+        if self.cleaned_data.get("is_wireless_link"):
+            for key in RADIO_OID_KEYS:
+                val = self.cleaned_data.get(f"oid_{key}")
+                if val:
+                    radio[key] = val
+            json_radio = self.cleaned_data.get("radio_oids_json") or {}
+            if json_radio:
+                radio.update(json_radio)
+        instance.radio_oids = radio
 
         if commit:
             instance.save()

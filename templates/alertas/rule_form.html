@@ -439,6 +439,100 @@
                             </div>
                         </div>
 
+                        <!-- ---------- wl_signal ---------- -->
+                        <div class="mb-3">
+                            <strong class="d-block text-primary" style="font-size: 0.82rem;">
+                                <i class="bi bi-reception-4"></i> Señal de radio (dBm)
+                            </strong>
+                            <div class="small text-muted mt-1">
+                                Nivel de señal recibida. <strong>Más cercano a 0 es mejor</strong>
+                                (los valores son negativos).
+                                <br>
+                                Valores típicos: <code>-40 a -60 dBm</code> (excelente),
+                                <code>-60 a -70 dBm</code> (bueno),
+                                <code>-70 a -80 dBm</code> (regular).
+                                <br>
+                                <span class="text-muted">Recomendado: alertar si
+                                <strong>&lt; -75 dBm</strong> (warning) o
+                                <strong>&lt; -85 dBm</strong> (critical).</span>
+                                <br>
+                                Solo disponible en radioenlaces.
+                            </div>
+                        </div>
+
+                        <!-- ---------- wl_noise_floor ---------- -->
+                        <div class="mb-3">
+                            <strong class="d-block text-primary" style="font-size: 0.82rem;">
+                                <i class="bi bi-soundwave"></i> Piso de ruido (dBm)
+                            </strong>
+                            <div class="small text-muted mt-1">
+                                Nivel de ruido/interferencia en el canal.
+                                <strong>Más negativo es mejor</strong>.
+                                <br>
+                                Valores típicos: <code>-95 dBm</code> (limpio),
+                                <code>-90 a -85 dBm</code> (moderado),
+                                <code>&gt; -85 dBm</code> (ruidoso).
+                                <br>
+                                <span class="text-muted">Recomendado: alertar si
+                                <strong>&gt; -85 dBm</strong> (warning) o
+                                <strong>&gt; -80 dBm</strong> (critical).</span>
+                            </div>
+                        </div>
+
+                        <!-- ---------- wl_ccq ---------- -->
+                        <div class="mb-3">
+                            <strong class="d-block text-primary" style="font-size: 0.82rem;">
+                                <i class="bi bi-activity"></i> CCQ (%)
+                            </strong>
+                            <div class="small text-muted mt-1">
+                                Calidad de enlace (Client Connection Quality).
+                                <strong>Más alto es mejor</strong>.
+                                <br>
+                                Valores típicos: <code>&gt; 90%</code> (excelente),
+                                <code>70-90%</code> (bueno),
+                                <code>50-70%</code> (regular).
+                                <br>
+                                <span class="text-muted">Recomendado: alertar si
+                                <strong>&lt; 70%</strong> (warning) o
+                                <strong>&lt; 50%</strong> (critical).</span>
+                            </div>
+                        </div>
+
+                        <!-- ---------- wl_tx_rate / wl_rx_rate ---------- -->
+                        <div class="mb-3">
+                            <strong class="d-block text-primary" style="font-size: 0.82rem;">
+                                <i class="bi bi-arrow-down-up"></i> Tasas TX/RX (bps)
+                            </strong>
+                            <div class="small text-muted mt-1">
+                                Velocidad actual de transmisión/recepción del radio.
+                                <strong>Más alto es mejor</strong>.
+                                <br>
+                                Valores típicos: <code>60-130 Mbps</code> en canal de 20 MHz,
+                                <code>200-400 Mbps</code> en canal de 40/80 MHz.
+                                <br>
+                                <span class="text-muted">Recomendado: alertar si caen
+                                por debajo del 50% de la capacidad nominal del enlace.</span>
+                            </div>
+                        </div>
+
+                        <!-- ---------- airmax_quality / capacity ---------- -->
+                        <div class="mb-0">
+                            <strong class="d-block text-primary" style="font-size: 0.82rem;">
+                                <i class="bi bi-broadcast"></i> airMAX Quality / Capacity (%)
+                            </strong>
+                            <div class="small text-muted mt-1">
+                                Métricas propias de Ubiquiti airMAX.
+                                <strong>Más alto es mejor</strong>.
+                                <br>
+                                <em>Quality</em>: calidad global del enlace.
+                                <em>Capacity</em>: capacidad estimada disponible.
+                                <br>
+                                <span class="text-muted">Recomendado: alertar si
+                                <strong>&lt; 60%</strong> (warning) o
+                                <strong>&lt; 40%</strong> (critical).</span>
+                            </div>
+                        </div>
+
                     </div>
 
                 </div>
@@ -531,6 +625,15 @@ const CF_VALID_OPERATORS = {
     "cpu_pct":          ["gte", "gt"],
     "mem_pct":          ["gte", "gt"],
     "temp_c":           ["gte", "gt"],
+    // RF — señal y tasas alertan con <, ruido alerta con >
+    "wl_signal":        ["lte", "lt"],
+    "wl_noise_floor":   ["gte", "gt"],
+    "wl_ccq":           ["lte", "lt"],
+    "wl_tx_rate":       ["lte", "lt"],
+    "wl_rx_rate":       ["lte", "lt"],
+    "airmax_quality":   ["lte", "lt"],
+    "airmax_capacity":  ["lte", "lt"],
+
 };
 
 // ============================================================
@@ -544,6 +647,14 @@ const CF_METRIC_UNITS = {
     "cpu_pct":          "%",
     "mem_pct":          "%",
     "temp_c":           "°C",
+    // RF
+    "wl_signal":        "dBm",
+    "wl_noise_floor":   "dBm",
+    "wl_ccq":           "%",
+    "wl_tx_rate":       "bps",
+    "wl_rx_rate":       "bps",
+    "airmax_quality":   "%",
+    "airmax_capacity":  "%",
 };
 
 // ============================================================
@@ -557,6 +668,14 @@ const CF_METRIC_HELP_SHORT = {
     "cpu_pct":          "Alerta si ≥ 75 % (warning) o 90 % (critical)",
     "mem_pct":          "Alerta si ≥ 80 % (warning) o 92 % (critical)",
     "temp_c":           "Alerta si ≥ 70 °C (warning) o 85 °C (critical)",
+    // RF
+    "wl_signal":        "Alerta si < -75 dBm (warning) o < -85 dBm (critical)",
+    "wl_noise_floor":   "Alerta si > -85 dBm (warning) o > -80 dBm (critical)",
+    "wl_ccq":           "Alerta si < 70 % (warning) o < 50 % (critical)",
+    "wl_tx_rate":       "Alerta si cae por debajo de 50 Mbps (50,000,000 bps)",
+    "wl_rx_rate":       "Alerta si cae por debajo de 50 Mbps (50,000,000 bps)",
+    "airmax_quality":   "Alerta si < 60 % (warning) o < 40 % (critical)",
+    "airmax_capacity":  "Alerta si < 60 % (warning) o < 40 % (critical)",
 };
 
 // ============================================================

@@ -8,7 +8,7 @@ Incluye:
   - discovery_history: historial de ejecuciones por equipo.
   - monitor_status: estado del monitor (servicio + configuración).
   - monitor_live: monitoreo en vivo de equipos.
-  - monitor_devices_live: API JSON de métricas en vivo.
+  - monitor_devices_live: API JSON de métricas en vivo (incluye RF).
 """
 import logging
 import time
@@ -28,7 +28,6 @@ from inventario.models import Device, DeviceModel
 from .models import DiscoveryJob, MonitorStatus
 from .services.chassis_oids import (
     get_available_health_metrics,
-    get_available_radio_metrics,
     has_meaningful_health_metrics,
 )
 from .services.discovery import discover_interfaces
@@ -42,15 +41,7 @@ log = logging.getLogger(__name__)
 @login_required
 @require_admin_or_super()
 def run_discovery(request, device_id):
-    """
-    Ejecuta el discovery SNMP para un equipo específico.
-
-    Args:
-        device_id: ID del equipo.
-
-    Returns:
-        HttpResponse: redirección a la página de interfaces.
-    """
+    """Ejecuta el discovery SNMP para un equipo específico."""
     device = get_object_or_404(Device, pk=device_id)
 
     if request.method != "POST":
@@ -105,12 +96,7 @@ def run_discovery(request, device_id):
 @login_required
 @require_admin_or_super()
 def run_discovery_all(request):
-    """
-    Ejecuta el discovery en todos los equipos activos (endpoint JSON).
-
-    Returns:
-        JsonResponse: resumen de la operación con resultados por equipo.
-    """
+    """Ejecuta el discovery en todos los equipos activos (endpoint JSON)."""
     if request.method != "POST":
         return JsonResponse({"error": "Método no permitido"}, status=405)
 
@@ -158,20 +144,38 @@ def run_discovery_all(request):
     })
 
 
+@login_required
+@require_admin_or_super()
+def run_ap_discovery(request, device_id):
+    """Ejecuta discovery de clientes AP para un equipo específico."""
+    from .services.ap_clients import discover_ap_clients
+    device = get_object_or_404(Device, pk=device_id)
+
+    if request.method != "POST":
+        return redirect("inventario:device_detail", device_id=device_id)
+
+    result = discover_ap_clients(device)
+    if result["success"]:
+        messages.success(
+            request,
+            f"Discovery AP: {result['clients_found']} clientes "
+            f"({result['added']} nuevos, {result['updated']} actualizados, "
+            f"{result['total']} totales)"
+        )
+    else:
+        messages.error(
+            request,
+            f"Error en Discovery AP: {result['error']}"
+        )
+    return redirect("inventario:device_detail", device_id=device_id)
+
+
 # ============================================================
 # DISCOVERY — HISTORIAL
 # ============================================================
 @login_required
 def discovery_history(request, device_id):
-    """
-    Muestra el historial de ejecuciones del discovery de un equipo.
-
-    Args:
-        device_id: ID del equipo.
-
-    Returns:
-        HttpResponse: renderiza `discovery_history.html`.
-    """
+    """Muestra el historial de ejecuciones del discovery de un equipo."""
     device = get_object_or_404(Device, pk=device_id)
     jobs = DiscoveryJob.objects.filter(device=device).select_related("triggered_by")
 
@@ -248,9 +252,6 @@ def monitor_status(request):
       - Último heartbeat, host y PID.
       - Intervalos configurados de cada poller.
       - Última ejecución de cada poller.
-
-    Returns:
-        HttpResponse: renderiza `monitor_status.html`.
     """
     status = MonitorStatus.objects.filter(id=1).first()
     cfg = SystemConfig.get()
@@ -276,15 +277,13 @@ def monitor_live(request):
     Página de Monitoreo en vivo.
 
     Muestra las tarjetas con los últimos valores reportados por los
-    pollers: ICMP, SNMP tráfico, Core Health, radiofrecuencia y
-    estado TCP.
+    pollers: ICMP, SNMP tráfico, Core Health, Radio y estado TCP.
 
     Solo renderiza el template; los datos los pide el frontend
     vía AJAX a `monitor_devices_live`.
-
-    Returns:
-        HttpResponse: renderiza `monitor_live.html`.
     """
+    
+    # Equipos con sus modelos precargados
     devices = (
         Device.objects
         .filter(active=True)
@@ -292,6 +291,7 @@ def monitor_live(request):
         .prefetch_related("interfaces")
     )
 
+    # Estadísticas para el header
     total_devices = devices.count()
     monitored_count = sum(
         1 for d in devices if any(i.monitored for i in d.interfaces.all())
@@ -312,14 +312,12 @@ def monitor_devices_live(request):
     """
     API JSON con los últimos valores de cada equipo.
 
-    Características:
-      - Devuelve `has_health_metrics` (bool) y
-        `available_health_metrics` (list) para que el frontend decida
-        si mostrar Core Health.
-      - Devuelve `is_wireless_link` (bool), `available_radio_metrics`
-        (list) y `radio` (dict) con las métricas de radiofrecuencia.
-      - Errores de InfluxDB devuelven listas vacías en lugar de 500.
-      - Incluye un bloque `_debug` con contadores para diagnóstico.
+    Incluye:
+      - Bloque `radio` con métricas de RF si el equipo es wireless.
+      - `has_radio_metrics` y `available_radio_metrics` para que el
+        frontend decida si mostrar el bloque.
+      - `is_wireless_link` para el badge.
+      - `wireless_info` (utilización de enlace) para equipos wireless.
 
     Returns:
         JsonResponse: {timestamp, devices: [...], _debug: {...}}
@@ -327,7 +325,7 @@ def monitor_devices_live(request):
     from .services import influx_reader
 
     try:
-        # --- Equipos activos con modelo e interfaces precargadas ---
+        # --- Equipos activos con modelo y interfaces precargadas ---
         devices = list(
             Device.objects
             .filter(active=True)
@@ -342,6 +340,7 @@ def monitor_devices_live(request):
         health_data = snapshot.get("health", {})
         tcp_data = snapshot.get("tcp", {})
         radio_data = snapshot.get("radio", {})
+        ap_clients_data = snapshot.get("ap_clients", {})
 
         # --- Mapa de alias por dispositivo ---
         alias_map = {}
@@ -353,18 +352,33 @@ def monitor_devices_live(request):
 
         result = []
         for device in devices:
-            monitored_ifaces = [
-                i for i in device.interfaces.all() if i.monitored
-            ]
+            monitored_ifaces = [i for i in device.interfaces.all() if i.monitored]
 
             # --- Determinar si es radio-enlace ---
             is_wireless = bool(
                 device.device_model and device.device_model.is_wireless_link
             )
 
-            # --- Métricas de chasis disponibles ---
+            # --- Métricas de chasis disponibles para este equipo ---
             available_health = get_available_health_metrics(device)
             has_health = has_meaningful_health_metrics(device)
+
+            # ¿El modelo tiene interfaces tradicionales?
+            model_has_interfaces = bool(
+                device.device_model and device.device_model.has_interfaces
+            ) if device.device_model else True
+
+            # Tráfico: solo si el modelo soporta interfaces Y hay
+            # interfaces monitoreadas.
+            has_traffic = bool(monitored_ifaces) and model_has_interfaces
+
+            # --- Métricas de RF disponibles ---
+            available_radio = []
+            has_radio = False
+            if is_wireless:
+                from .services.chassis_oids import get_available_radio_metrics
+                available_radio = get_available_radio_metrics(device)
+                has_radio = bool(available_radio)
 
             # --- ICMP ---
             icmp = icmp_data.get(device.name, {})
@@ -394,6 +408,7 @@ def monitor_devices_live(request):
                     })
 
             # --- Información extra para radioenlaces ---
+            # Se busca la interfaz con la mayor utilización para destacarla
             wireless_info = None
             if is_wireless and traffic_payload:
                 valid_traffic = [
@@ -432,32 +447,78 @@ def monitor_devices_live(request):
                         "is_open": t.get("is_open"),
                     })
 
-            # --- Radiofrecuencia (NUEVO) ---
-            radio_payload = {}
-            available_radio = get_available_radio_metrics(device)
-            if is_wireless and radio_data.get(device.name):
-                raw_radio = radio_data[device.name]
-                # Convertir capacidades de kbps a bps para la UI
-                for key in ("capacity_rx_kbps", "capacity_tx_kbps"):
-                    if key in raw_radio and raw_radio[key] is not None:
-                        radio_payload[key.replace("_kbps", "_bps")] = (
-                            raw_radio[key] * 1000
-                        )
-                # Copiar el resto de campos tal cual
-                for k in (
-                    "freq_mhz",
-                    "noise_dbm",
-                    "signal_dbm",
-                    "ccq_pct",
-                    "tx_rate_mbps",
-                    "rx_rate_mbps",
-                    "sta_count",
-                ):
-                    if k in raw_radio:
-                        radio_payload[k] = raw_radio[k]
-                # Timestamp
-                if raw_radio.get("ts"):
-                    radio_payload["ts"] = raw_radio["ts"].isoformat()
+            # Radiofrecuencia
+            radio = radio_data.get(device.name, {})
+            radio_payload = None
+            if radio:
+                radio_payload = {
+                    "freq": radio.get("radio_freq"),
+                    "txpower": radio.get("radio_txpower"),
+                    "signal": radio.get("wl_signal"),
+                    "noise": radio.get("wl_noise_floor"),
+                    "ccq": radio.get("wl_ccq"),
+                    "tx_rate": radio.get("wl_tx_rate"),
+                    "rx_rate": radio.get("wl_rx_rate"),
+                    "airmax_quality": radio.get("airmax_quality"),
+                    "airmax_capacity": radio.get("airmax_capacity"),
+                    "chan_width": radio.get("chan_width"),
+                    "ts": radio.get("ts").isoformat() if radio.get("ts") else None,
+                }
+            
+            # --- Clientes AP (solo si es AP) ---
+            ap_clients_payload = None
+            if is_wireless:
+                # Mapa de config estática por MAC
+                static_map = {
+                    (c.get("mac") or "").upper(): c
+                    for c in (device.ap_interfaces or [])
+                }
+                live_map = {
+                    (c.get("client_mac") or "").upper(): c
+                    for c in ap_clients_data.get(device.name, [])
+                }
+
+                # Unión: config estática + métricas en vivo
+                all_macs = set(static_map.keys()) | set(live_map.keys())
+                clients_out = []
+                for mac in all_macs:
+                    static = static_map.get(mac, {})
+                    live = live_map.get(mac, {})
+                    # Online si tiene métricas recientes (últimos 5 min)
+                    online = False
+                    live_ts = live.get("ts")
+                    if live_ts:
+                        try:
+                            age = (timezone.now() - live_ts).total_seconds()
+                            online = age < 300
+                        except Exception:
+                            online = False
+
+                    clients_out.append({
+                        "mac": mac,
+                        "ip": static.get("ip") or live.get("client_ip", ""),
+                        "hostname": static.get("hostname", ""),
+                        "essid": static.get("essid") or live.get("essid", ""),
+                        "if_index": static.get("if_index"),
+                        "online": online,
+                        "signal": live.get("signal_dbm"),
+                        "noise": live.get("noise_dbm"),
+                        "ccq": live.get("ccq_pct"),
+                        "tx_rate": live.get("tx_rate_bps"),
+                        "rx_rate": live.get("rx_rate_bps"),
+                        "snr": live.get("snr_db"),
+                        "first_seen": static.get("first_seen"),
+                        "last_seen": static.get("last_seen"),
+                        "ts": live_ts.isoformat() if live_ts else None,
+                    })
+
+                # Ordenar: online primero, luego por MAC
+                clients_out.sort(key=lambda c: (not c["online"], c["mac"]))
+                ap_clients_payload = clients_out
+
+                # Actualizar el flag is_access_point
+                # (hay clientes conectados ahora mismo)
+                has_active_clients = any(c["online"] for c in clients_out)
 
             result.append({
                 "id": device.id,
@@ -467,13 +528,13 @@ def monitor_devices_live(request):
                 "vendor": device.vendor,
                 "model": device.device_model.name if device.device_model else None,
                 "location": device.location,
-                "has_traffic": bool(monitored_ifaces),
-                # Flags de chasis:
+                "has_traffic": has_traffic,
+                # Flags nuevos:
                 "has_health_metrics": has_health,
                 "available_health_metrics": available_health,
-                # Flags de radio:
-                "is_wireless_link": is_wireless,
+                "has_radio_metrics": has_radio,
                 "available_radio_metrics": available_radio,
+                "is_wireless_link": is_wireless,
                 "wireless_info": wireless_info,
                 # Payloads:
                 "icmp": icmp_payload,
@@ -481,6 +542,10 @@ def monitor_devices_live(request):
                 "health": health_payload,
                 "tcp": tcp_payload,
                 "radio": radio_payload,
+                "has_interfaces_support": model_has_interfaces,
+                "is_access_point": bool(ap_clients_payload and len(ap_clients_payload) > 0),
+                "ap_clients": ap_clients_payload,
+                "has_active_ap_clients": has_active_clients if is_wireless else False,
             })
 
         return JsonResponse({

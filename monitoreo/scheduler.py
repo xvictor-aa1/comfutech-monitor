@@ -2,12 +2,12 @@
 """
 Scheduler APScheduler con auto-reload de config y modo silencioso.
 
-Jobs registrados:
-  - traffic:   SNMP Traffic Poller (cada N segundos).
-  - health:    Core Health Poller (cada N segundos).
-  - radio:     Radio Poller (cada N segundos).
-  - icmp:      ICMP/TCP Poller (cada N segundos).
-  - heartbeat: Heartbeat + Config reload (cada 60s).
+Jobs:
+  - traffic: SNMP Tráfico (intervalo configurable)
+  - health:  Core Health (intervalo configurable)
+  - icmp:    ICMP/TCP (intervalo configurable)
+  - radio:   Radiofrecuencia (mismo intervalo que health)
+  - heartbeat: actualiza el estado y recarga la config
 """
 import logging
 import os
@@ -24,14 +24,12 @@ log = logging.getLogger(__name__)
 _scheduler = None
 _config_snapshot = None
 
+# Job IDs activos
+_JOB_IDS = ("traffic", "health", "icmp", "radio", "ap_clients")
+
 
 def _utcnow_aware():
-    """
-    Devuelve la hora actual en UTC con tzinfo.
-
-    Returns:
-        datetime: fecha/hora UTC aware.
-    """
+    """Devuelve la hora actual en UTC con tzinfo."""
     return datetime.now(timezone.utc)
 
 
@@ -39,11 +37,7 @@ def _utcnow_aware():
 # SILENCIO
 # ============================================================
 def silence_noisy_loggers():
-    """
-    Reduce el nivel de loggers ruidosos a WARNING.
-
-    Útil para el modo `--silent` del comando `run_monitor`.
-    """
+    """Reduce el nivel de loggers ruidosos."""
     noisy = {
         "pysnmp": logging.WARNING,
         "pysnmp.entity": logging.WARNING,
@@ -61,13 +55,7 @@ def silence_noisy_loggers():
 
 
 def set_silent_mode(enabled: bool = True):
-    """
-    Activa/desactiva el modo silencioso.
-
-    Args:
-        enabled: si True, baja el nivel de log a WARNING+ para los
-                 loggers del proyecto.
-    """
+    """Activa/desactiva el modo silencioso."""
     silence_noisy_loggers()
 
     if enabled:
@@ -84,13 +72,7 @@ def set_silent_mode(enabled: bool = True):
 # JOBS
 # ============================================================
 def _heartbeat_and_reload():
-    """
-    Actualiza el heartbeat del monitor y comprueba cambios de config.
-
-    - Escribe `MonitorStatus.last_heartbeat` y estado en la BD.
-    - Llama a `_check_config_changes()` para aplicar cambios de
-      intervalos o habilitación sin reiniciar el proceso.
-    """
+    """Actualiza el heartbeat y detecta cambios de configuración."""
     from .models import MonitorStatus
     try:
         MonitorStatus.objects.update_or_create(
@@ -112,9 +94,7 @@ def _heartbeat_and_reload():
 
 
 def _job_traffic():
-    """
-    Ejecuta el poller de tráfico SNMP y actualiza el estado.
-    """
+    """Ejecuta el poller de tráfico SNMP."""
     from .services.traffic import poll_traffic
     try:
         stats = poll_traffic()
@@ -126,9 +106,7 @@ def _job_traffic():
 
 
 def _job_health():
-    """
-    Ejecuta el poller de chasis y actualiza el estado.
-    """
+    """Ejecuta el poller de Core Health."""
     from .services.health import poll_health
     try:
         stats = poll_health()
@@ -139,24 +117,8 @@ def _job_health():
         _update_status("last_health_run", error=f"Health: {e}")
 
 
-def _job_radio():
-    """
-    Ejecuta el poller de radiofrecuencia y actualiza el estado.
-    """
-    from .services.health import poll_radio
-    try:
-        stats = poll_radio()
-        log.info("Radio poll OK: %s", stats)
-        _update_status("last_radio_run")  # Requiere migración menor si no existe
-    except Exception as e:
-        log.exception("Radio poll falló: %s", e)
-        _update_status("last_radio_run", error=f"Radio: {e}")
-
-
 def _job_icmp():
-    """
-    Ejecuta el poller ICMP/TCP y actualiza el estado.
-    """
+    """Ejecuta el poller ICMP/TCP."""
     from .services.icmp_tcp import poll_icmp_tcp
     try:
         stats = poll_icmp_tcp()
@@ -167,15 +129,32 @@ def _job_icmp():
         _update_status("last_icmp_run", error=f"ICMP/TCP: {e}")
 
 
-def _update_status(field: str, error: str = None):
-    """
-    Actualiza un campo de fecha en `MonitorStatus` y opcionalmente
-    el último error.
+def _job_radio():
+    """Ejecuta el poller de radiofrecuencia (solo equipos wireless)."""
+    from .services.radio import poll_radio
+    try:
+        stats = poll_radio()
+        log.info("Radio poll OK: %s", stats)
+        _update_status("last_radio_run")
+    except Exception as e:
+        log.exception("Radio poll falló: %s", e)
+        _update_status("last_radio_run", error=f"Radio: {e}")
 
-    Args:
-        field: nombre del campo a actualizar (p.ej. "last_traffic_run").
-        error: mensaje de error opcional.
-    """
+
+def _job_ap_clients():
+    """Ejecuta el poller de clientes AP."""
+    from .services.ap_clients import poll_ap_clients
+    try:
+        stats = poll_ap_clients()
+        log.info("AP Clients poll OK: %s", stats)
+        _update_status("last_ap_clients_run")
+    except Exception as e:
+        log.exception("AP Clients poll falló: %s", e)
+        _update_status("last_ap_clients_run", error=f"AP Clients: {e}")
+
+
+def _update_status(field: str, error: str = None):
+    """Actualiza un campo de fecha de último run en MonitorStatus."""
     from .models import MonitorStatus
     try:
         MonitorStatus.objects.filter(id=1).update(**{field: dj_tz.now()})
@@ -186,17 +165,10 @@ def _update_status(field: str, error: str = None):
 
 
 # ============================================================
-# AUTO-RELOAD
+# AUTO-RELOAD DE CONFIG
 # ============================================================
 def _check_config_changes():
-    """
-    Comprueba si la configuración del monitor cambió y aplica los
-    cambios sin reiniciar el proceso.
-
-    - Si `enabled` cambia, pausa o reanuda los jobs.
-    - Si cambian los intervalos, modifica los jobs con
-      `_scheduler.modify_job`.
-    """
+    """Detecta cambios en SystemConfig y los aplica al scheduler."""
     global _config_snapshot
 
     current = get_monitor_config()
@@ -219,27 +191,36 @@ def _check_config_changes():
             log.info("Monitor reactivado.")
             _resume_all_jobs()
 
-    intervals = {
-        "snmp_poll_interval":   ("traffic", current["snmp_poll_interval"]),
-        "health_poll_interval": ("health",  current["health_poll_interval"]),
-        "icmp_poll_interval":   ("icmp",    current["icmp_poll_interval"]),
-    }
-    for key, (job_id, seconds) in intervals.items():
-        if current[key] != _config_snapshot[key]:
+    # Intervalos: traffic / health / icmp / radio / ap_clients
+    if current["snmp_poll_interval"] != _config_snapshot["snmp_poll_interval"]:
+        try:
+            _scheduler.modify_job("traffic", seconds=current["snmp_poll_interval"])
+            log.info("Job 'traffic' → %ds.", current["snmp_poll_interval"])
+        except Exception as e:
+            log.error("No se pudo modificar 'traffic': %s", e)
+
+    if current["health_poll_interval"] != _config_snapshot["health_poll_interval"]:
+        # health, radio y ap_clients comparten intervalo
+        for job_id in ("health", "radio", "ap_clients"):
             try:
-                _scheduler.modify_job(job_id, seconds=seconds)
-                log.info("Job '%s' → %ds.", job_id, seconds)
+                _scheduler.modify_job(job_id, seconds=current["health_poll_interval"])
+                log.info("Job '%s' → %ds.", job_id, current["health_poll_interval"])
             except Exception as e:
                 log.error("No se pudo modificar '%s': %s", job_id, e)
+
+    if current["icmp_poll_interval"] != _config_snapshot["icmp_poll_interval"]:
+        try:
+            _scheduler.modify_job("icmp", seconds=current["icmp_poll_interval"])
+            log.info("Job 'icmp' → %ds.", current["icmp_poll_interval"])
+        except Exception as e:
+            log.error("No se pudo modificar 'icmp': %s", e)
 
     _config_snapshot = current
 
 
 def _pause_all_jobs():
-    """
-    Pausa todos los jobs de polling.
-    """
-    for job_id in ("traffic", "health", "radio", "icmp"):
+    """Pausa todos los jobs."""
+    for job_id in _JOB_IDS:
         try:
             _scheduler.pause_job(job_id)
         except Exception:
@@ -247,10 +228,8 @@ def _pause_all_jobs():
 
 
 def _resume_all_jobs():
-    """
-    Reanuda todos los jobs de polling.
-    """
-    for job_id in ("traffic", "health", "radio", "icmp"):
+    """Reanuda todos los jobs."""
+    for job_id in _JOB_IDS:
         try:
             _scheduler.resume_job(job_id)
         except Exception:
@@ -261,16 +240,7 @@ def _resume_all_jobs():
 # START / STOP / RESTART
 # ============================================================
 def start_scheduler():
-    """
-    Inicia el scheduler con los jobs configurados.
-
-    - Reinicia el warm-up del motor de alertas.
-    - Crea los jobs de tráfico, chasis, radio, ICMP y heartbeat.
-    - Si el monitor está deshabilitado, pausa los jobs.
-
-    Returns:
-        BackgroundScheduler: instancia del scheduler.
-    """
+    """Inicia el scheduler y programa todos los jobs."""
     global _scheduler, _config_snapshot
 
     if _scheduler is not None:
@@ -294,31 +264,31 @@ def start_scheduler():
         },
     )
 
-    # Job de tráfico
     _scheduler.add_job(
         _job_traffic, "interval",
         seconds=cfg["snmp_poll_interval"],
         id="traffic", name="SNMP Traffic Poller",
     )
-    # Job de chasis
     _scheduler.add_job(
         _job_health, "interval",
         seconds=cfg["health_poll_interval"],
         id="health", name="Core Health Poller",
     )
-    # Job de radio (mismo intervalo que health)
-    _scheduler.add_job(
-        _job_radio, "interval",
-        seconds=cfg["health_poll_interval"],
-        id="radio", name="Radio Poller",
-    )
-    # Job de ICMP/TCP
     _scheduler.add_job(
         _job_icmp, "interval",
         seconds=cfg["icmp_poll_interval"],
         id="icmp", name="ICMP/TCP Poller",
     )
-    # Heartbeat
+    _scheduler.add_job(
+        _job_radio, "interval",
+        seconds=cfg["health_poll_interval"],
+        id="radio", name="RF Radio Poller",
+    )
+    _scheduler.add_job(
+        _job_ap_clients, "interval",
+        seconds=cfg["health_poll_interval"],
+        id="ap_clients", name="AP Clients Poller",
+    )
     _scheduler.add_job(
         _heartbeat_and_reload, "interval",
         seconds=60, id="heartbeat", name="Heartbeat + Config reload",
@@ -330,7 +300,7 @@ def start_scheduler():
         _pause_all_jobs()
         log.warning("Monitor iniciado DESHABILITADO.")
     else:
-        for job_id in ("traffic", "health", "radio", "icmp"):
+        for job_id in _JOB_IDS:
             try:
                 _scheduler.modify_job(job_id, next_run_time=_utcnow_aware())
             except Exception:
@@ -339,19 +309,17 @@ def start_scheduler():
     _config_snapshot = cfg
 
     log.info(
-        "Scheduler iniciado: traffic=%ds, health=%ds, radio=%ds, "
-        "icmp=%ds, enabled=%s.",
+        "Scheduler iniciado: traffic=%ds, health=%ds, icmp=%ds, "
+        "radio=%ds, enabled=%s.",
         cfg["snmp_poll_interval"], cfg["health_poll_interval"],
-        cfg["health_poll_interval"],
-        cfg["icmp_poll_interval"], cfg["enabled"],
+        cfg["icmp_poll_interval"], cfg["health_poll_interval"],
+        cfg["enabled"],
     )
     return _scheduler
 
 
 def stop_scheduler():
-    """
-    Detiene el scheduler y limpia el snapshot de configuración.
-    """
+    """Detiene el scheduler."""
     global _scheduler, _config_snapshot
     if _scheduler:
         try:
@@ -364,12 +332,7 @@ def stop_scheduler():
 
 
 def restart_scheduler():
-    """
-    Reinicia el scheduler y el cliente de InfluxDB.
-
-    Returns:
-        BackgroundScheduler: el nuevo scheduler.
-    """
+    """Reinicia el scheduler (stop + reset cliente InfluxDB + start)."""
     stop_scheduler()
     from .services import influx_writer
     influx_writer.reset()

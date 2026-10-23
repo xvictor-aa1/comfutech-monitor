@@ -1,6 +1,11 @@
 .env
 prompt.txt
 timezone_posix.sql
+respaldo-monitor_comfutech.sql
 logs/django.log
 .vscode/settings.json
 logs/monitor.log
+alertas/__pycache__/models.cpython-313.pyc
+alertas/__pycache__/models.cpython-313.pyc
+logs/monitor.log
+logs/django.log

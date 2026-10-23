@@ -315,3 +315,8 @@ LOGGING = {
         },
     },
 }
+
+# Para HTTP (no HTTPS):
+SESSION_COOKIE_SECURE = False
+CSRF_COOKIE_SECURE = False
+SESSION_COOKIE_SAMESITE = "Lax"  # "Strict" rompe algunos fetch cross-site

@@ -118,6 +118,9 @@ def discover_interfaces(device: Device) -> dict:
     """
     Descubre las interfaces de un equipo vía SNMP walk.
 
+    Si el modelo del equipo tiene `has_interfaces=False`, se devuelve
+    un resultado vacío inmediatamente (sin hacer walk SNMP).
+
     Pasos:
       1. Walk de cada columna IF-MIB.
       2. Unión de todos los ifIndex encontrados.
@@ -148,6 +151,16 @@ def discover_interfaces(device: Device) -> dict:
         "deleted": 0,
         "error": None,
     }
+
+    # --- Skip si el modelo no tiene interfaces ---
+    if device.device_model and not device.device_model.has_interfaces:
+        result["success"] = True
+        result["error"] = None
+        log.info(
+            "[%s] Discovery omitido: el modelo '%s' no tiene interfaces SNMP.",
+            device.name, device.device_model.name,
+        )
+        return result
 
     try:
         # --- 1. Walk de cada columna ---
